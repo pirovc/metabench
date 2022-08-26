@@ -1,0 +1,28 @@
+workdir: "./results/"
+threads: 8
+
+tools:
+  ganon:
+    "1.2.0": "/home/pirov/code/ganon/"
+  kraken2:
+    "2.1.2": ""
+
+samples:
+  sample_name1:
+    fq1: "/home/pirov/data/reads/H01_1M_0.1.fq.gz"
+    fq2: ""
+
+run:
+  ganon:
+    dbs: 
+      "bac_refseq_cg_t1s": "/home/pirov/code/ganon/bac_refseq_cg_t1s"
+    fixed_params: "--ganon-path /home/pirov/code/ganon/"
+    params:
+      "--rel-cutoff": [0.1, 0.2, 0.1]
+      "--rel-filter": 0.15
+
+  kraken2:
+    dbs: 
+      "my_db_name": "/home/pirov/data/ganon_benchmark_data/databases/20181219_abfv_refseq_cg_t3a/kraken2_db/default/"
+    params:
+      "--confidence": [0, 0.5, 0.1]
