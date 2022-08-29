@@ -1,0 +1,21 @@
+workdir: "results/"
+threads: 8
+
+samples:
+  sample_name1: ""
+
+dbs:
+  "bac_refseq_cg_t1s": "profile.txt"
+
+ranks:
+  - superkingdom
+  - phylum
+  - class
+  - order
+  - family
+  - genus
+  - species
+
+taxonomy: "ncbi"
+taxonomy_files: 
+  - "../../../data/taxdump.tar.gz"

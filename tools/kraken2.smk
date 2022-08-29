@@ -10,7 +10,7 @@ rule kraken2_classify:
             path = lambda wildcards: config["tools"]["kraken2"][wildcards.vers],
             input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
             fixed_params = lambda wildcards: config["run"]["kraken2"]["fixed_params"] if "fixed_params" in config["run"]["kraken2"] else "",
-            params = lambda wildcards: " ".join(wildcards.prms.replace("=", " ").split("_"))
+            params = lambda wildcards: str2params(wildcards.prms)
     shell:
         """
         if [[ ! -z "{params.path}" ]]; then

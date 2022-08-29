@@ -18,7 +18,7 @@ run:
       "bac_refseq_cg_t1s": "/home/pirov/code/ganon/bac_refseq_cg_t1s"
     fixed_params: "--ganon-path /home/pirov/code/ganon/"
     params:
-      "--rel-cutoff": [0.1, 0.2, 0.1]
+      "--rel-cutoff": [0.25, 0.75, 0.1]
       "--rel-filter": 0.15
 
   kraken2:

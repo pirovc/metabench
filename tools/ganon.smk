@@ -12,8 +12,8 @@ rule ganon_classify:
             path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
             dbprefix = lambda wildcards: config["run"]["ganon"]["dbs"][wildcards.dtbs],
             input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
-            fixed_params = lambda wildcards: config["run"]["ganon"]["fixed_params"]  if "fixed_params" in config["run"]["ganon"] else "",
-            params = lambda wildcards: " ".join(wildcards.prms.replace("=", " ").split("_"))
+            fixed_params = lambda wildcards: config["run"]["ganon"]["fixed_params"] if "fixed_params" in config["run"]["ganon"] else "",
+            params = lambda wildcards: str2params(wildcards.prms)
     shell:
         """
         # if path is provided, deactivate conda
