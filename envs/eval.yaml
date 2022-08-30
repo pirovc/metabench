@@ -4,3 +4,4 @@ channels:
  - conda-forge
 dependencies:
  - multitax=1.1.1
+ - pylca=1.0.0
