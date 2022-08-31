@@ -30,8 +30,8 @@ def main():
     db_file = args.input_database_profile
     res_file = args.input_results
 
-    output_cumu = open(args.output_cumulative,"w") if args.output_cumulative else None
-    output_rank = open(args.output_rank,"w") if args.output_rank else None
+    output_cumu = open(args.output_cumulative, "w") if args.output_cumulative else None
+    output_rank = open(args.output_rank, "w") if args.output_rank else None
 
     # Ground truth: readid <tab> assembly <tab> taxid
     gt = dict()
@@ -331,7 +331,16 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
     sens_max_assembly = tp_ranks_assembly/float(db_ranks_assembly) if db_ranks_assembly>0 else 0
     prec_assembly = tp_ranks_assembly/classified_ranks_assembly if classified_ranks_assembly>0 else 0
     f1s_assembly = (2*sens_assembly*prec_assembly)/float(sens_assembly+prec_assembly) if sens_assembly+prec_assembly>0 else 0
-    print("assembly", gt_ranks_assembly, db_ranks_assembly, classified_ranks_assembly, tp_ranks_assembly, fp_ranks_assembly, "%.5f" % sens_max_assembly, "%.5f" % sens_assembly, "%.5f" % prec_assembly, "%.5f" % f1s_assembly, sep="\t", file=sys.stderr)
+    print("assembly",
+          gt_ranks_assembly,
+          db_ranks_assembly,
+          classified_ranks_assembly,
+          tp_ranks_assembly,
+          fp_ranks_assembly,
+          "%.5f" % sens_max_assembly,
+          "%.5f" % sens_assembly,
+          "%.5f" % prec_assembly,
+          "%.5f" % f1s_assembly, sep="\t", file=sys.stderr)
 
     if output_rank:
         final_stats["db"]["assembly"] = db_ranks_assembly

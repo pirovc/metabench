@@ -2,9 +2,10 @@ rule ganon_classify:
     input: fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"]),
            dbibf = lambda wildcards: os.path.abspath(config["run"]["ganon"]["dbs"][wildcards.dtbs] + ".ibf"),
            dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"]["dbs"][wildcards.dtbs] + ".tax")
-    output: rep="ganon/{vers}/{samp}/{dtbs}/{prms}.rep",
-            lca="ganon/{vers}/{samp}/{dtbs}/{prms}.lca",
-            time="ganon/{vers}/{samp}/{dtbs}/{prms}.time",
+    output: rep=temp("ganon/{vers}/{samp}/{dtbs}/{prms}.rep"),
+            lca=temp("ganon/{vers}/{samp}/{dtbs}/{prms}.lca"),
+            tre=temp("ganon/{vers}/{samp}/{dtbs}/{prms}.tre"),
+            time="ganon/{vers}/{samp}/{dtbs}/{prms}.time"
     log: "ganon/{vers}/{samp}/{dtbs}/{prms}.log"
     threads: config["threads"]
     conda: srcdir("../envs/ganon.yaml")

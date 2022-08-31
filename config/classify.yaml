@@ -15,14 +15,14 @@ samples:
 run:
   ganon:
     dbs: 
-      "bac_refseq_cg_t1s": "/home/pirov/code/ganon/bac_refseq_cg_t1s"
+      "20181219_abfv_refseq_cg_t3a": "/home/pirov/data/ganon_benchmark_data/databases/20181219_abfv_refseq_cg_t3a/ganon_db/assembly_k19w32/ganon_db"
     fixed_params: "--ganon-path /home/pirov/code/ganon/"
     params:
-      "--rel-cutoff": [0.25, 0.75, 0.1]
+      "--rel-cutoff": [0.25, 0.35, 0.1]
       "--rel-filter": 0.15
 
   kraken2:
     dbs: 
-      "my_db_name": "/home/pirov/data/ganon_benchmark_data/databases/20181219_abfv_refseq_cg_t3a/kraken2_db/default/"
+      "20181219_abfv_refseq_cg_t3a": "/home/pirov/data/ganon_benchmark_data/databases/20181219_abfv_refseq_cg_t3a/kraken2_db/default/"
     params:
-      "--confidence": [0, 0.5, 0.1]
+      "--confidence": [0, 0.2, 0.1]

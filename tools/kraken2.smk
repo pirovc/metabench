@@ -1,7 +1,7 @@
 rule kraken2_classify:
     input: fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"]),
            dbfolder = lambda wildcards: os.path.abspath(config["run"]["kraken2"]["dbs"][wildcards.dtbs])
-    output: res="kraken2/{vers}/{samp}/{dtbs}/{prms}.res",
+    output: res=temp("kraken2/{vers}/{samp}/{dtbs}/{prms}.res"),
             time="kraken2/{vers}/{samp}/{dtbs}/{prms}.time"
     log: "kraken2/{vers}/{samp}/{dtbs}/{prms}.log"
     threads: config["threads"]
