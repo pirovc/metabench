@@ -8,13 +8,20 @@ from util import default_ranks, parse_tax, closest_node, file_exists
 
 def main():
 
-    parser = argparse.ArgumentParser(prog="stats", conflict_handler="resolve", add_help=True)
-    parser.add_argument("-i", "--input-file",     metavar="", type=file_exists, required=True, help="")
-    parser.add_argument("-o", "--output-file",    metavar="", type=file_exists, help="json output file or STDOUT")
-    parser.add_argument("-t", "--taxonomy",       metavar="", type=str, help="custom, ncbi or gtdb")
-    parser.add_argument("-x", "--taxonomy-files", metavar="", type=file_exists, nargs="*", help="")
-    parser.add_argument("-r", "--ranks",          metavar="", type=str, nargs="*", help="empty for default ranks (superkingdom phylum class order family genus species)")
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s 1.0.0")
+    parser = argparse.ArgumentParser(
+        prog="stats", conflict_handler="resolve", add_help=True)
+    parser.add_argument("-i", "--input-file",     metavar="",
+                        type=file_exists, required=True, help="")
+    parser.add_argument("-o", "--output-file",    metavar="",
+                        type=file_exists, help="json output file or STDOUT")
+    parser.add_argument("-t", "--taxonomy",       metavar="",
+                        type=str, help="custom, ncbi or gtdb")
+    parser.add_argument("-x", "--taxonomy-files", metavar="",
+                        type=file_exists, nargs="*", help="")
+    parser.add_argument("-r", "--ranks",          metavar="", type=str, nargs="*",
+                        help="empty for default ranks (superkingdom phylum class order family genus species)")
+    parser.add_argument("-v", "--version", action="version",
+                        version="%(prog)s 1.0.0")
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -33,7 +40,7 @@ def main():
     # bioboxes:
     # headers start with @
     # fields: readid <tab> binid <tab> taxid
-    for line in gzip.open(args.input_file, "rt") if args.input_file.endswith(".gz") else open(args.input_file,"r"):
+    for line in gzip.open(args.input_file, "rt") if args.input_file.endswith(".gz") else open(args.input_file, "r"):
         if line[0] == "@":
             continue
         fields = line.rstrip().split("\t")

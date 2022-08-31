@@ -1,4 +1,5 @@
 import os
+import argparse
 from multitax import CustomTx, DummyTx, NcbiTx, GtdbTx
 
 default_ranks = ["root",
@@ -52,4 +53,3 @@ def file_exists(file):
     if not os.path.exists(file):
         raise argparse.ArgumentTypeError("{0} does not exist".format(file))
     return file
-

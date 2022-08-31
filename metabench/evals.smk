@@ -8,13 +8,11 @@ def get_results_prefix():
     return [os.path.splitext(file)[0] for file in glob.glob('**/*.bioboxes', recursive=True)]
 
 def get_results_prefix_filtered():
-    res = get_results_prefix()
     filtered_res = []
-    for samp in config["samples"].keys():
-        for dtbs in config["dbs"].keys():
-            for r in res:
-                if samp in r and dtbs in r:
-                    filtered_res.append(r)
+    for r in get_results_prefix():
+        for samp in config["samples"].keys():
+            if samp in r:
+                filtered_res.append(r)
     return filtered_res
 
 
@@ -54,7 +52,7 @@ rule evals:
             scripts_path = srcdir("../scripts/"),
             ranks = " ".join(config["ranks"]),
             taxonomy_files = " ".join(config["taxonomy_files"]),
-            db_profile = lambda wildcards: config["dbs"][wildcards.dtbs],
+            db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
             gt = lambda wildcards: config["samples"][wildcards.samp]
     conda: srcdir("../envs/evals.yaml")
     shell: 
@@ -63,7 +61,7 @@ rule evals:
                 --ranks {params.ranks} \
                 --input-results {input.bioboxes} \
                 --input-ground-truth {params.gt} \
-                --input-database-profile {params.db_profile} \
+                {params.db_profile} \
                 --taxonomy {config[taxonomy]} \
                 --taxonomy-files {params.taxonomy_files} \
                 --output-cumulative {output.cumu_json} \

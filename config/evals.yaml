@@ -4,8 +4,8 @@ threads: 8
 samples:
   "sample_name1": "/home/pirov/code/ganon_benchmark/files/reads/cami/toy/H01_1M_readid_assembly_taxid.txt"
 
-dbs:
-  "20181219_abfv_refseq_cg_t3a": "/home/pirov/data/ganon_benchmark_data/databases/20181219_abfv_refseq_cg_t3a/ganon_db/assembly_k19w32/ganon_db.tax"
+# dbs:
+#   "20181219_abfv_refseq_cg_t3a": "/home/pirov/data/ganon_benchmark_data/databases/20181219_abfv_refseq_cg_t3a/ganon_db/assembly_k19w32/ganon_db.tax"
 
 ranks:
   - superkingdom
