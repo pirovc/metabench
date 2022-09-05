@@ -3,7 +3,7 @@ import argparse
 import sys
 import gzip
 import json
-from util import default_ranks, parse_tax, closest_node, file_exists
+from util import default_ranks, parse_tax, file_exists
 
 
 def main():
@@ -51,7 +51,7 @@ def main():
             sys.stderr.write(fields[2] + " not found in taxonomy\n")
             continue
         else:
-            closest_taxid = closest_node(tax, taxid, fixed_ranks)
+            closest_taxid = tax.closest_parent(taxid, fixed_ranks)
             if closest_taxid == tax.undefined_node:
                 res["reads_invalid_tax"] += 1
                 sys.stderr.write(taxid + " without valid rank\n")

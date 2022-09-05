@@ -33,22 +33,6 @@ def parse_tax(tax, files):
     return tax
 
 
-def closest_node(tax, node, ranks):
-    # find the closest fixed rank
-
-    # Already on list of provided ranks
-    if tax.rank(node) in ranks:
-        return node
-    else:
-        # check lineage from back to front until find valid node
-        for t in tax.lineage(node, ranks=ranks)[::-1]:
-            if t != tax.undefined_node:
-                return t
-
-    # nothing found
-    return tax.undefined_node
-
-
 def file_exists(file):
     if not os.path.exists(file):
         raise argparse.ArgumentTypeError("{0} does not exist".format(file))

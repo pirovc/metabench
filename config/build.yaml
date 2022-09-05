@@ -1,0 +1,30 @@
+workdir: "./databases/"
+threads: 8
+
+tools:
+  ganon:
+    "1.2.0": "/home/pirov/code/ganon/"
+  kraken2:
+    "2.1.2": ""
+
+taxonomy: "ncbi"
+taxonomy_files: 
+  - "../taxdump.tar.gz"
+
+dbs:
+  "20181219_abfv_refseq_cg_t3a":
+    folder: "/home/pirov/data/arc_cg_rs/2022-09-05_16-39-33/files/"
+    extension: ".fna.gz"
+    details: "/home/pirov/data/arc_cg_rs/2022-09-05_16-39-33/2022-09-05_16-39-33_sequence_accession.txt"
+
+run:
+  ganon:
+    fixed_params: "--ganon-path /home/pirov/code/ganon/ --ncbi-file-info /home/pirov/data/arc_cg_rs/assembly_summary.txt"
+    params:
+      "--kmer-size": [19, 22, 3]
+      "--window-size": 35
+
+  kraken2:
+    params:
+      "--kmer-len": [33, 35, 2]
+      "--minimizer-len": 31

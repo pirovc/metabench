@@ -7,7 +7,7 @@ import argparse
 from pylca.pylca import LCA
 from collections import defaultdict
 
-from util import default_ranks, parse_tax, closest_node, file_exists
+from util import default_ranks, parse_tax, file_exists
 
 
 def main():
@@ -114,7 +114,7 @@ def main():
             for t in tax.lineage(leaf_gttaxid)[::-1]:
                 if t in db_taxids:
                     rank_gttaxid[leaf_gttaxid] = tax.rank(
-                        closest_node(tax, t, fixed_ranks))
+                        tax.closest_parent(t, fixed_ranks))
                     break
 
     # 1 - check if there is an accession (uniq assignment) and if it"s correct
@@ -150,7 +150,7 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
 
     for readid, (_, gt_taxid) in gt.items():
 
-        leaf_rank_gt = tax.rank(closest_node(tax, gt_taxid, fixed_ranks))
+        leaf_rank_gt = tax.rank(tax.closest_parent(gt_taxid, fixed_ranks))
         gt_ranks[leaf_rank_gt] += 1
 
         # if rank level taxid is present in the database (=could be classified)
@@ -162,11 +162,10 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
             res_taxid = res[readid][1]
 
             # taxonomic clasification
-            r = tax.rank(closest_node(tax, res_taxid, fixed_ranks))
+            r = tax.rank(tax.closest_parent(res_taxid, fixed_ranks))
 
             classified_ranks[r] += 1
-            # TODO root_rank
-            if r == "root":  # root classification is equal to false
+            if r == tax.root_rank:  # root classification is equal to false
                 fp_lower_ranks[r] += 1
             else:
                 if res_taxid == gt_taxid:  # tp -> perfect classification
@@ -298,7 +297,8 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
             if gt_assembly in db_assembly:
                 db_ranks_assembly += 1
 
-        gt_lin = tax.lineage(gt_taxid, ranks=fixed_ranks)
+        # already pre-built build_lineages() with fixed_ranks
+        gt_lin = tax.lineage(gt_taxid)
         # Check if the taxid is on ground truth and account for it
         for idx, fr in enumerate(fixed_ranks):
             if gt_lin[idx]:
@@ -319,7 +319,8 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
                 else:
                     fp_ranks_assembly += 1
 
-            res_lin = tax.lineage(res_taxid, ranks=fixed_ranks)
+            # already pre-built build_lineages() with fixed_ranks
+            res_lin = tax.lineage(res_taxid)
             # compare every taxonomic rank
             for idx, fr in enumerate(fixed_ranks):
                 if res_lin[idx]:  # if there"s a classification for such rank
