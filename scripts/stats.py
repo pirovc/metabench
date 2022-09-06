@@ -35,7 +35,7 @@ def main():
     # Generate results dict
     res = {"reads_classified": 0,
            "reads_invalid_tax": 0,
-           "ranks": OrderedDict({r:0 for r in fixed_ranks})}
+           "ranks": OrderedDict({r:0 for r in fixed_ranks[::-1]})}
 
     # bioboxes:
     # headers start with @

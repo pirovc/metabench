@@ -10,7 +10,7 @@ rule kraken2_build:
     benchmark:
         "kraken2/{vers}/{dtbs}/{args}.build.bench.tsv"
     log:
-        "kraken2/{vers}/{dtbs}/{args}.log"
+        "kraken2/{vers}/{dtbs}/{args}.build.log"
     threads:
         config["threads"]
     conda:
@@ -41,7 +41,7 @@ rule kraken2_build_size:
         "kraken2/{vers}/{dtbs}/{args}/taxonomy/nodes.dmp",
         "kraken2/{vers}/{dtbs}/{args}/taxonomy/names.dmp"
     output:
-        "kraken2/{vers}/{dtbs}/{args}.size.tsv"
+        "kraken2/{vers}/{dtbs}/{args}.build.size.tsv"
     shell:
         "du --block-size=1 {input} > {output}"  # output in bytes
 
@@ -49,19 +49,19 @@ rule kraken2_classify:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
-        res=temp("kraken2/{vers}/{samp}/{dtbs}/{args}.res")
+        res=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res")
     benchmark:
-        "kraken2/{vers}/{samp}/{dtbs}/{args}.classify.bench.tsv"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv"
     log:
-        "kraken2/{vers}/{samp}/{dtbs}/{args}.log"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.log"
     threads:
         config["threads"]
     conda:
         srcdir("../envs/kraken2.yaml")
     params:
         path = lambda wildcards: config["tools"]["kraken2"][wildcards.vers],
-        outprefix = "kraken2/{vers}/{samp}/{dtbs}/{args}", 
-        dbprefix = lambda wildcards: config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs],
+        outprefix = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}", 
+        dbprefix = lambda wildcards: os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/",
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["kraken2"][wildcards.vers]["fixed_args"]),
         args = lambda wildcards: str2args(wildcards.args)
@@ -89,9 +89,9 @@ rule kraken2_classify:
 
 rule kraken2_classify_format:
     input:
-        res="kraken2/{vers}/{samp}/{dtbs}/{args}.res",
+        res="kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res",
     output:
-        "kraken2/{vers}/{samp}/{dtbs}/{args}.bioboxes"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
     params:
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
     shell:

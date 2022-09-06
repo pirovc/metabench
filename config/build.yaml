@@ -31,10 +31,6 @@ run:
       "arc_cg_rs":
         fixed_args:
         args:
-          "--kmer-len": [33, 35, 2]
-          "--minimizer-len": 31
-
-
 # run:
 #    tool:
 #      version:

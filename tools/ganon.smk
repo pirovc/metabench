@@ -1,18 +1,18 @@
 rule ganon_build:
     output:
-        db1 = "ganon/{vers}/{dtbs}/{args}.ibf",
-        db2 = "ganon/{vers}/{dtbs}/{args}.tax"
+        db1 = "ganon/{vers}/{dtbs}/{args}/ganon_db.ibf",
+        db2 = "ganon/{vers}/{dtbs}/{args}/ganon_db.tax"
     benchmark:
         "ganon/{vers}/{dtbs}/{args}.build.bench.tsv"
     log:
-        "ganon/{vers}/{dtbs}/{args}.log"
+        "ganon/{vers}/{dtbs}/{args}.build.log"
     threads:
         config["threads"]
     conda:
         srcdir("../envs/ganon.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
-        outprefix = "ganon/{vers}/{dtbs}/{args}",
+        outprefix = "ganon/{vers}/{dtbs}/{args}/ganon_db",
         db = lambda wildcards: config["dbs"][wildcards.dtbs],
         fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers][wildcards.dtbs]["fixed_args"]),
         args = lambda wildcards: str2args(wildcards.args)
@@ -34,10 +34,10 @@ rule ganon_build:
 
 rule ganon_build_size:
     input:
-        db1 = "ganon/{vers}/{dtbs}/{args}.ibf",
-        db2 = "ganon/{vers}/{dtbs}/{args}.tax"
+        db1 = "ganon/{vers}/{dtbs}/{args}/ganon_db.ibf",
+        db2 = "ganon/{vers}/{dtbs}/{args}/ganon_db.tax"
     output:
-        "ganon/{vers}/{dtbs}/{args}.size.tsv"
+        "ganon/{vers}/{dtbs}/{args}.build.size.tsv"
     shell:
         "du --block-size=1 {input} > {output}"  # output in bytes
 
@@ -46,21 +46,21 @@ rule ganon_classify:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
-        rep=temp("ganon/{vers}/{samp}/{dtbs}/{args}.rep"),
-        lca=temp("ganon/{vers}/{samp}/{dtbs}/{args}.lca"),
-        tre=temp("ganon/{vers}/{samp}/{dtbs}/{args}.tre")
+        rep=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"),
+        lca=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.lca"),
+        tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.tre")
     benchmark:
-        "ganon/{vers}/{samp}/{dtbs}/{args}.classify.bench.tsv"
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv"
     log:
-        "ganon/{vers}/{samp}/{dtbs}/{args}.log"
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.log"
     threads:
         config["threads"]
     conda:
         srcdir("../envs/ganon.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
-        outprefix = "ganon/{vers}/{samp}/{dtbs}/{args}", 
-        dbprefix = lambda wildcards: config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs],
+        outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}", 
+        dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
         args = lambda wildcards: str2args(wildcards.args)
@@ -90,9 +90,9 @@ rule ganon_classify:
         """
 
 rule ganon_classify_format:
-    input: lca="ganon/{vers}/{samp}/{dtbs}/{args}.lca",
-           dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs] + ".tax")
-    output: bioboxes = "ganon/{vers}/{samp}/{dtbs}/{args}.bioboxes"
+    input: lca="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.lca",
+           dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
+    output: bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
     shell:
         """
         # bioboxes header

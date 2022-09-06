@@ -1,5 +1,6 @@
 workdir: "./results/"
 threads: 8
+#benchmark: 1
 
 tools:
   ganon:
@@ -16,17 +17,17 @@ run:
   ganon:
     "1.2.0":
       dbs: 
-        "arc_cg_rs_k19w35": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/--kmer-size=19_--window-size=35"
+        "arc_cg_rs": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/"
       fixed_args:
         "--ganon-path": "/home/pirov/code/ganon/"
       args:
-        "--rel-cutoff": [0.25, 0.35, 0.1]
-        "--rel-filter": 0.15
+        # "--rel-cutoff": [0.25, 0.35, 0.1]
+        # "--rel-filter": 0.15
 
   kraken2:
     "2.1.2":
       dbs: 
-        "arc_cg_rs_k35m31": "/home/pirov/code/metabench/databases/kraken2/2.1.2/arc_cg_rs/--kmer-len=35_--minimizer-len=31/"
+        "arc_cg_rs": "/home/pirov/code/metabench/databases/kraken2/2.1.2/arc_cg_rs/"
       fixed_args:
       args:
         "--confidence": [0, 0.2, 0.1]

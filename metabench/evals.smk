@@ -4,33 +4,49 @@ import os
 workdir: config["workdir"]
 include: "util.py"
 
-def get_results_prefix():
-    return [os.path.splitext(file)[0] for file in glob.glob('**/*.bioboxes', recursive=True)]
+# def get_results_prefix():
+#     return [os.path.splitext(file)[0] ]
 
-def get_results_prefix_filtered():
-    filtered_res = []
-    for r in get_results_prefix():
-        for samp in config["samples"].keys():
-            if samp in r:
-                filtered_res.append(r)
-    return filtered_res
+# def get_results_prefix_filtered():
+#     filtered_res = []
+#     for r in get_results_prefix():
+#         for samp in config["samples"].keys():
+#             if samp in r:
+#                 filtered_res.append(r)
+#     return filtered_res
 
+
+# rule all:
+#     input:
+#         stats = expand("{prefix}.stats.json", prefix=get_results_prefix()),
+#         evals = expand("{prefix}.evals.json", prefix=get_results_prefix_filtered())
+
+def input_all(wildcards, ext: list):
+    out = []
+    for file in glob.glob('**/*.classify.bioboxes', recursive=True):
+        # without ".classify.bioboxes"
+        prefix = os.path.splitext(os.path.splitext(file)[0])[0]
+        # Just generate for prefixes with sample in config fige
+        sample = prefix.split("/")[3]
+        for sample in config["samples"].keys():
+            for e in ext:
+                out.append(prefix + "." + e)
+    return out
 
 rule all:
     input:
-        stats = expand("{prefix}.stats.json", prefix=get_results_prefix()),
-        evals = expand("{prefix}.evals.json", prefix=get_results_prefix_filtered())
+        lambda wildcards: unpack(input_all(wildcards, ext=["stats.json", "evals.json"]))
 
 
 rule stats:
     input:
-        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{args}.bioboxes"
+        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
     output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{args}.stats.json"
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.stats.json"
     log:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{args}.stats.log"
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.stats.log"
     params:
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "arguments": str2args(wildcards.args)}),
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "database_arguments": str2args(wildcards.dtbs_args), "arguments": str2args(wildcards.args)}),
         scripts_path = srcdir("../scripts/"),
         ranks = " ".join(config["ranks"]),
         taxonomy_files = " ".join(config["taxonomy_files"])
@@ -50,15 +66,15 @@ echo "{{
 
 rule evals:
     input:
-        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{args}.bioboxes"
+        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
     output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{args}.evals.json",
-        cumu_json = temp("{tool}/{vers}/{samp}/{dtbs}/{args}.evals.cumu.json"),
-        rank_json = temp("{tool}/{vers}/{samp}/{dtbs}/{args}.evals.rank.json"),
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.evals.json",
+        cumu_json = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.evals.cumu.json"),
+        rank_json = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.evals.rank.json"),
     log:
-        "{tool}/{vers}/{samp}/{dtbs}/{args}.evals.log"
+        "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.evals.log"
     params:
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "parameters": str2args(wildcards.args)}),
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "database_arguments": str2args(wildcards.dtbs_args), "arguments": str2args(wildcards.args)}),
         scripts_path = srcdir("../scripts/"),
         ranks = " ".join(config["ranks"]),
         taxonomy_files = " ".join(config["taxonomy_files"]),

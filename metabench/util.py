@@ -15,31 +15,33 @@ def dict2args(args_dict):
 
 
 def str2args(s):
-    return " ".join(s.replace("=", " ").split("_"))
+    if s == "default":
+        return ""
+    else:
+        return " ".join(s.replace("=", " ").split("_"))
 
 
 def argval2str(arg, val):
     return str(arg) + "=" + str(val)
 
 
-def args_product(args):
-    expanded_args = []
-    for p, v in args.items():
-        if isinstance(v, list):
-            rargs = []
-            # include stop
-            for range_val in list(np.arange(v[0], v[1], v[2])) + [v[1]]:
-                # round to 2 decimal
-                rargs.append(argval2str(p, round(range_val, 2)))
-            expanded_args.append(tuple(rargs))
-        else:
-            expanded_args.append(tuple([argval2str(p, v)]))
+def args_product(config_args_dict):
+    prod_args = [["default"]]
+    if config_args_dict is not None:
+        expanded_args = []
+        for p, v in config_args_dict.items():
+            if isinstance(v, list):
+                rargs = []
+                # include stop
+                for range_val in list(np.arange(v[0], v[1], v[2])) + [v[1]]:
+                    # round to 2 decimal
+                    rargs.append(argval2str(p, round(range_val, 2)))
+                expanded_args.append(tuple(rargs))
+            else:
+                expanded_args.append(tuple([argval2str(p, v)]))
 
-    prod_args = []
-    if expanded_args:
-        prod_args = list(product(*expanded_args))
-    else:
-        prod_args = ["default"]
+        if expanded_args:
+            prod_args = list(product(*expanded_args))
 
     return prod_args
 

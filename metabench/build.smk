@@ -14,7 +14,7 @@ def input_all(wildcards, ext: list):
                         # define path to output
                         path = tool + "/" + vers + "/" + dtbs + "/"
                         # build product of all arguments (single or range)
-                        for args in args_product(config["run"][tool][vers][dtbs]["args"]):
+                        for args in args_product(config["run"][tool][vers][dtbs]["args"] if "args" in config["run"][tool][vers][dtbs] else None):
                             # For every final final extension
                             for e in ext:
                                 out.append(path + join_args(args) + "." + e)
@@ -24,7 +24,7 @@ def input_all(wildcards, ext: list):
 
 rule all:
     input:
-        lambda wildcards: unpack(input_all(wildcards, ext=["build.bench.json", "size.json"]))
+        lambda wildcards: unpack(input_all(wildcards, ext=["build.bench.json", "build.size.json"]))
 
 rule time:
     input:
