@@ -36,7 +36,13 @@ rule time:
     output:
         json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.json"
     params:
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "database_arguments": str2args(wildcards.dtbs_args), "arguments": str2args(wildcards.args), "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}),
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, 
+                                                           "version": wildcards.vers,
+                                                           "sample": wildcards.samp,
+                                                           "database": wildcards.dtbs,
+                                                           "database_arguments": str2args(wildcards.dtbs_args),
+                                                           "arguments": str2args(wildcards.args),
+                                                           "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}),
         json_bench = lambda wildcards, input: json_bench(input.bench),
     shell: 
         """

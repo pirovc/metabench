@@ -32,7 +32,11 @@ rule time:
     output:
         json = "{tool}/{vers}/{dtbs}/{args}.build.bench.json"
     params: 
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "database": wildcards.dtbs, "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"]), "arguments": str2args(wildcards.args)}),
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
+                                                           "version": wildcards.vers,
+                                                           "database": wildcards.dtbs,
+                                                           "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"]),
+                                                           "arguments": str2args(wildcards.args)}),
         json_bench = lambda wildcards, input: json_bench(input.bench)
     shell: 
         """
@@ -49,7 +53,11 @@ rule fsize:
     output:
         json = "{tool}/{vers}/{dtbs}/{args}.size.json"
     params:
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "database": wildcards.dtbs, "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"]), "arguments": str2args(wildcards.args)})
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
+                                                           "version": wildcards.vers,
+                                                           "database": wildcards.dtbs,
+                                                           "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"]),
+                                                           "arguments": str2args(wildcards.args)})
     shell: 
         """
         # index size bytes

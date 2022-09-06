@@ -29,7 +29,12 @@ rule stats:
     log:
         json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.stats.log"
     params:
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "database_arguments": str2args(wildcards.dtbs_args), "arguments": str2args(wildcards.args)}),
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
+                                                           "version": wildcards.vers,
+                                                           "sample": wildcards.samp,
+                                                           "database": wildcards.dtbs,
+                                                           "database_arguments": str2args(wildcards.dtbs_args),
+                                                           "arguments": str2args(wildcards.args)}),
         scripts_path = srcdir("../scripts/"),
         ranks = " ".join(config["ranks"]),
         taxonomy_files = " ".join(config["taxonomy_files"])
@@ -57,7 +62,12 @@ rule evals:
     log:
         "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.evals.log"
     params:
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "database_arguments": str2args(wildcards.dtbs_args), "arguments": str2args(wildcards.args)}),
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
+                                                           "version": wildcards.vers,
+                                                           "sample": wildcards.samp,
+                                                           "database": wildcards.dtbs,
+                                                           "database_arguments": str2args(wildcards.dtbs_args),
+                                                           "arguments": str2args(wildcards.args)}),
         scripts_path = srcdir("../scripts/"),
         ranks = " ".join(config["ranks"]),
         taxonomy_files = " ".join(config["taxonomy_files"]),
