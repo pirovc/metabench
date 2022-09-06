@@ -1,6 +1,3 @@
-import numpy as np
-from itertools import product
-
 workdir: config["workdir"]
 include: "util.py"
 include: "../tools/ganon.smk"
@@ -12,26 +9,31 @@ def input_all(wildcards, ext: list):
     for tool in config["tools"]:
         if tool in config["run"]:
             for vers in config["tools"][tool]:
-                for dtbs in config["dbs"]:
-                    # define path to output
-                    path = tool + "/" + vers + "/" + dtbs + "/"
-                    # build product of all parameters (single or range)
-                    for e in ext:
-                        for p in params_product(config["run"][tool]["params"]):
-                            out.append(path + join_params(p) + "." + e)
+                if vers in config["run"][tool]:
+                    for dtbs in config["dbs"]:
+                        # define path to output
+                        path = tool + "/" + vers + "/" + dtbs + "/"
+                        # build product of all arguments (single or range)
+                        for args in args_product(config["run"][tool][vers][dtbs]["args"]):
+                            # For every final final extension
+                            for e in ext:
+                                out.append(path + join_args(args) + "." + e)
     
     return out
 
 
 rule all:
-    input: lambda wildcards: unpack(input_all(wildcards, ext=["build.bench.json", "size.json"]))
+    input:
+        lambda wildcards: unpack(input_all(wildcards, ext=["build.bench.json", "size.json"]))
 
 rule time:
-    input: bench = "{tool}/{vers}/{dtbs}/{prms}.build.bench.tsv"
-    output: json = "{tool}/{vers}/{dtbs}/{prms}.build.bench.json"
+    input:
+        bench = "{tool}/{vers}/{dtbs}/{args}.build.bench.tsv"
+    output:
+        json = "{tool}/{vers}/{dtbs}/{args}.build.bench.json"
     params: 
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "database": wildcards.dtbs, "parameters": str2params(wildcards.prms)}),
-        json_bench = lambda wildcards, input: json_bench(input.bench),
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "database": wildcards.dtbs, "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"]), "arguments": str2args(wildcards.args)}),
+        json_bench = lambda wildcards, input: json_bench(input.bench)
     shell: 
         """
 echo "{{
@@ -42,9 +44,12 @@ echo "{{
         """
 
 rule fsize:
-    input: fsize = "{tool}/{vers}/{dtbs}/{prms}.size.tsv"
-    output: json = "{tool}/{vers}/{dtbs}/{prms}.size.json"
-    params: json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "database": wildcards.dtbs, "parameters": str2params(wildcards.prms)})
+    input:
+        fsize = "{tool}/{vers}/{dtbs}/{args}.size.tsv"
+    output:
+        json = "{tool}/{vers}/{dtbs}/{args}.size.json"
+    params:
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "database": wildcards.dtbs, "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"]), "arguments": str2args(wildcards.args)})
     shell: 
         """
         # index size bytes

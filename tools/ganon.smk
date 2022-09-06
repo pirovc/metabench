@@ -1,17 +1,21 @@
 rule ganon_build:
-    output: db1 = "ganon/{vers}/{dtbs}/{prms}.ibf",
-            db2 = "ganon/{vers}/{dtbs}/{prms}.tax"
-    benchmark: "ganon/{vers}/{dtbs}/{prms}.build.bench.tsv"
-    log: "ganon/{vers}/{dtbs}/{prms}.log"
-    threads: config["threads"]
-    conda: srcdir("../envs/ganon.yaml")
-    params: folder = lambda wildcards: os.path.abspath(config["dbs"][wildcards.dtbs]["folder"]),
-            extens = lambda wildcards: config["dbs"][wildcards.dtbs]["extension"],
-            outprefix = "ganon/{vers}/{dtbs}/{prms}",
-            path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
-            fixed_params = lambda wildcards: config["run"]["ganon"]["fixed_params"] if "fixed_params" in config["run"]["ganon"] else "",
-            params = lambda wildcards: str2params(wildcards.prms),
-            taxonomy_files = " ".join(config["taxonomy_files"]) if "taxonomy_files" in config else ""
+    output:
+        db1 = "ganon/{vers}/{dtbs}/{args}.ibf",
+        db2 = "ganon/{vers}/{dtbs}/{args}.tax"
+    benchmark:
+        "ganon/{vers}/{dtbs}/{args}.build.bench.tsv"
+    log:
+        "ganon/{vers}/{dtbs}/{args}.log"
+    threads:
+        config["threads"]
+    conda:
+        srcdir("../envs/ganon.yaml")
+    params:
+        path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
+        outprefix = "ganon/{vers}/{dtbs}/{args}",
+        db = lambda wildcards: config["dbs"][wildcards.dtbs],
+        fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers][wildcards.dtbs]["fixed_args"]),
+        args = lambda wildcards: str2args(wildcards.args)
     shell: 
         """
         # if path is provided, deactivate conda
@@ -20,36 +24,46 @@ rule ganon_build:
         fi
         {params.path}ganon build-custom \
         --db-prefix {params.outprefix} \
-        --input {params.folder} \
-        --input-extension {params.extens} \
+        --input {params.db[folder]} \
+        --input-extension {params.db[extension]} \
+        --taxonomy {params.db[taxonomy]} \
+        --taxonomy-files {params.db[taxonomy_files]} \
         --threads {threads} \
-        --taxonomy {config[taxonomy]} \
-        --taxonomy-files {params.taxonomy_files} \
-        {params.fixed_params} {params.params} > {log} 2>&1
+        {params.fixed_args} {params.args} > {log} 2>&1
         """
 
 rule ganon_build_size:
-    input: db1 = "ganon/{vers}/{dtbs}/{prms}.ibf",
-           db2 = "ganon/{vers}/{dtbs}/{prms}.tax"
-    output: "ganon/{vers}/{dtbs}/{prms}.size.tsv"
-    shell: "du --block-size=1 {input} > {output}" #output in bytes
+    input:
+        db1 = "ganon/{vers}/{dtbs}/{args}.ibf",
+        db2 = "ganon/{vers}/{dtbs}/{args}.tax"
+    output:
+        "ganon/{vers}/{dtbs}/{args}.size.tsv"
+    shell:
+        "du --block-size=1 {input} > {output}"  # output in bytes
 
 
 rule ganon_classify:
-    input: fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
-    output: rep=temp("ganon/{vers}/{samp}/{dtbs}/{prms}.rep"),
-            lca=temp("ganon/{vers}/{samp}/{dtbs}/{prms}.lca"),
-            tre=temp("ganon/{vers}/{samp}/{dtbs}/{prms}.tre")
-    benchmark: "ganon/{vers}/{samp}/{dtbs}/{prms}.classify.bench.tsv"
-    log: "ganon/{vers}/{samp}/{dtbs}/{prms}.log"
-    threads: config["threads"]
-    conda: srcdir("../envs/ganon.yaml")
-    params: outprefix = "ganon/{vers}/{samp}/{dtbs}/{prms}", 
-            path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
-            dbprefix = lambda wildcards: config["run"]["ganon"]["dbs"][wildcards.dtbs],
-            input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
-            fixed_params = lambda wildcards: config["run"]["ganon"]["fixed_params"] if "fixed_params" in config["run"]["ganon"] else "",
-            params = lambda wildcards: str2params(wildcards.prms)
+    input:
+        fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
+    output:
+        rep=temp("ganon/{vers}/{samp}/{dtbs}/{args}.rep"),
+        lca=temp("ganon/{vers}/{samp}/{dtbs}/{args}.lca"),
+        tre=temp("ganon/{vers}/{samp}/{dtbs}/{args}.tre")
+    benchmark:
+        "ganon/{vers}/{samp}/{dtbs}/{args}.classify.bench.tsv"
+    log:
+        "ganon/{vers}/{samp}/{dtbs}/{args}.log"
+    threads:
+        config["threads"]
+    conda:
+        srcdir("../envs/ganon.yaml")
+    params:
+        path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
+        outprefix = "ganon/{vers}/{samp}/{dtbs}/{args}", 
+        dbprefix = lambda wildcards: config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs],
+        input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
+        fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
+        args = lambda wildcards: str2args(wildcards.args)
     shell:
         """
         # if path is provided, deactivate conda
@@ -57,20 +71,32 @@ rule ganon_classify:
             source deactivate;
         fi
         if [[ -z "{params.input_fq2}" ]]; then # single-end
-            {params.path}ganon classify --verbose --output-lca --db-prefix {params.dbprefix} -s {input.fq1} -t {threads} {params.fixed_params} {params.params} -o {params.outprefix} > {log} 2>&1
+            {params.path}ganon classify \
+                               --db-prefix {params.dbprefix} \
+                               --single-reads {input.fq1} \
+                               --output-prefix {params.outprefix} \
+                               --threads {threads} \
+                               --verbose --output-lca \
+                               {params.fixed_args} {params.args} > {log} 2>&1
         else # paired-end
-            {params.path}ganon classify --verbose --output-lca--db-prefix {params.dbprefix} -p {input.fq1} {params.input_fq2} -t {threads} {params.fixed_params} {params.params} -o {params.outprefix} > {log} 2>&1
+            {params.path}ganon classify \
+                               --db-prefix {params.dbprefix} \
+                               --paired-reads {input.fq1} {params.input_fq2} \
+                               --output-prefix {params.outprefix} \
+                               --threads {threads} \
+                               --verbose --output-lca \
+                               {params.fixed_args} {params.args} > {log} 2>&1
         fi
         """
 
 rule ganon_classify_format:
-    input: lca="ganon/{vers}/{samp}/{dtbs}/{prms}.lca",
-           dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"]["dbs"][wildcards.dtbs] + ".tax")
-    output: bioboxes = "ganon/{vers}/{samp}/{dtbs}/{prms}.bioboxes"
+    input: lca="ganon/{vers}/{samp}/{dtbs}/{args}.lca",
+           dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs] + ".tax")
+    output: bioboxes = "ganon/{vers}/{samp}/{dtbs}/{args}.bioboxes"
     shell:
         """
         # bioboxes header
-        printf "@Version:0.9.1\\n@SampleID:ganon {wildcards.vers} {wildcards.samp} {wildcards.dtbs} {wildcards.prms}\\n@@SEQUENCEID\\tBINID\\tTAXID\\n" > {output.bioboxes}
+        printf "@Version:0.9.1\\n@SampleID:ganon {wildcards.vers} {wildcards.samp} {wildcards.dtbs} {wildcards.args}\\n@@SEQUENCEID\\tBINID\\tTAXID\\n" > {output.bioboxes}
 
         # if numeric (taxid) or assembly
         awk 'FS="\\t"{{if($2 ~ /^[0-9]+$/){{print substr($1,1,length($1)-2)"\\t0\\t"$2}}}}' {input.lca} >> {output.bioboxes}

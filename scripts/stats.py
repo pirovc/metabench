@@ -4,7 +4,7 @@ import sys
 import gzip
 import json
 from util import default_ranks, parse_tax, file_exists
-
+from collections import OrderedDict
 
 def main():
 
@@ -35,7 +35,7 @@ def main():
     # Generate results dict
     res = {"reads_classified": 0,
            "reads_invalid_tax": 0,
-           "ranks": {}}
+           "ranks": OrderedDict({r:0 for r in fixed_ranks})}
 
     # bioboxes:
     # headers start with @

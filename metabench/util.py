@@ -1,13 +1,47 @@
-def join_params(params):
-    return "_".join(params)
+from itertools import product
+import numpy as np
 
 
-def params2str(arg, val):
+def join_args(args):
+    return "_".join(args)
+
+
+def dict2args(args_dict):
+    s = ""
+    if args_dict is not None:
+        for arg, val in args_dict.items():
+            s += str(arg) + " " + str(val) + " "
+    return s
+
+
+def str2args(s):
+    return " ".join(s.replace("=", " ").split("_"))
+
+
+def argval2str(arg, val):
     return str(arg) + "=" + str(val)
 
 
-def str2params(s):
-    return " ".join(s.replace("=", " ").split("_"))
+def args_product(args):
+    expanded_args = []
+    for p, v in args.items():
+        if isinstance(v, list):
+            rargs = []
+            # include stop
+            for range_val in list(np.arange(v[0], v[1], v[2])) + [v[1]]:
+                # round to 2 decimal
+                rargs.append(argval2str(p, round(range_val, 2)))
+            expanded_args.append(tuple(rargs))
+        else:
+            expanded_args.append(tuple([argval2str(p, v)]))
+
+    prod_args = []
+    if expanded_args:
+        prod_args = list(product(*expanded_args))
+    else:
+        prod_args = ["default"]
+
+    return prod_args
 
 
 def json_wildcards(wdict):
@@ -34,24 +68,3 @@ def json_bench(bench_file):
             json_str += '    \\"mean_cpu_load\\": ' + fields[8] + ',\n'
             json_str += '    \\"cpu_load\\": ' + fields[9]
     return json_str
-
-def params_product(params):
-    expanded_params = []
-    for p, v in params.items():
-        if isinstance(v, list):
-            rparams = []
-            # include stop
-            for range_val in list(np.arange(v[0], v[1], v[2])) + [v[1]]:
-                # round to 2 decimal
-                rparams.append(params2str(p, round(range_val, 2)))
-            expanded_params.append(tuple(rparams))
-        else:
-            expanded_params.append(tuple([params2str(p, v)]))
-
-    prod_params = []
-    if expanded_params:
-        prod_params = list(product(*expanded_params))
-    else:
-        prod_params = ["default"]
-
-    return prod_params

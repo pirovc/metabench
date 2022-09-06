@@ -17,19 +17,25 @@ def get_results_prefix_filtered():
 
 
 rule all:
-    input: stats = expand("{prefix}.stats.json", prefix=get_results_prefix()),
-           evals = expand("{prefix}.evals.json", prefix=get_results_prefix_filtered())
+    input:
+        stats = expand("{prefix}.stats.json", prefix=get_results_prefix()),
+        evals = expand("{prefix}.evals.json", prefix=get_results_prefix_filtered())
 
 
 rule stats:
-    input: bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{prms}.bioboxes"
-    output: json = "{tool}/{vers}/{samp}/{dtbs}/{prms}.stats.json"
-    log: json = "{tool}/{vers}/{samp}/{dtbs}/{prms}.stats.log"
-    params: json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "parameters": str2params(wildcards.prms)}),
-            scripts_path = srcdir("../scripts/"),
-            ranks = " ".join(config["ranks"]),
-            taxonomy_files = " ".join(config["taxonomy_files"])
-    conda: srcdir("../envs/evals.yaml")
+    input:
+        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{args}.bioboxes"
+    output:
+        json = "{tool}/{vers}/{samp}/{dtbs}/{args}.stats.json"
+    log:
+        json = "{tool}/{vers}/{samp}/{dtbs}/{args}.stats.log"
+    params:
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "arguments": str2args(wildcards.args)}),
+        scripts_path = srcdir("../scripts/"),
+        ranks = " ".join(config["ranks"]),
+        taxonomy_files = " ".join(config["taxonomy_files"])
+    conda:
+        srcdir("../envs/evals.yaml")
     shell: 
         """
         stats=$(python3 {params.scripts_path}stats.py \
@@ -43,17 +49,21 @@ echo "{{
         """
 
 rule evals:
-    input: bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{prms}.bioboxes"
-    output: json = "{tool}/{vers}/{samp}/{dtbs}/{prms}.evals.json",
-            cumu_json = temp("{tool}/{vers}/{samp}/{dtbs}/{prms}.evals.cumu.json"),
-            rank_json = temp("{tool}/{vers}/{samp}/{dtbs}/{prms}.evals.rank.json"),
-    log: "{tool}/{vers}/{samp}/{dtbs}/{prms}.evals.log"
-    params: json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "parameters": str2params(wildcards.prms)}),
-            scripts_path = srcdir("../scripts/"),
-            ranks = " ".join(config["ranks"]),
-            taxonomy_files = " ".join(config["taxonomy_files"]),
-            db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
-            gt = lambda wildcards: config["samples"][wildcards.samp]
+    input:
+        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{args}.bioboxes"
+    output:
+        json = "{tool}/{vers}/{samp}/{dtbs}/{args}.evals.json",
+        cumu_json = temp("{tool}/{vers}/{samp}/{dtbs}/{args}.evals.cumu.json"),
+        rank_json = temp("{tool}/{vers}/{samp}/{dtbs}/{args}.evals.rank.json"),
+    log:
+        "{tool}/{vers}/{samp}/{dtbs}/{args}.evals.log"
+    params:
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, "version": wildcards.vers, "sample": wildcards.samp, "database": wildcards.dtbs, "parameters": str2args(wildcards.args)}),
+        scripts_path = srcdir("../scripts/"),
+        ranks = " ".join(config["ranks"]),
+        taxonomy_files = " ".join(config["taxonomy_files"]),
+        db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
+        gt = lambda wildcards: config["samples"][wildcards.samp]
     conda: srcdir("../envs/evals.yaml")
     shell: 
         """
