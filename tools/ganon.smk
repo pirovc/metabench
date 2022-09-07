@@ -3,7 +3,7 @@ rule ganon_build:
         db1 = "ganon/{vers}/{dtbs}/{args}/ganon_db.ibf",
         db2 = "ganon/{vers}/{dtbs}/{args}/ganon_db.tax"
     benchmark:
-        "ganon/{vers}/{dtbs}/{args}.build.bench.tsv"
+        repeat("ganon/{vers}/{dtbs}/{args}.build.bench.tsv", config["repeat"])
     log:
         "ganon/{vers}/{dtbs}/{args}.build.log"
     threads:
@@ -46,11 +46,11 @@ rule ganon_classify:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
-        rep=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"),
         lca=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.lca"),
+        rep="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep",
         tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.tre")
     benchmark:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv"
+        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv", config["repeat"])
     log:
         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.log"
     threads:
@@ -90,13 +90,17 @@ rule ganon_classify:
         """
 
 rule ganon_classify_format:
-    input: lca="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.lca",
-           dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
-    output: bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
+    input: 
+        lca="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.lca",
+        dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
+    output:
+        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
+    params:
+        header = lambda wildcards: header_bioboxes_classify("ganon", wildcards)
     shell:
         """
         # bioboxes header
-        printf "@Version:0.9.1\\n@SampleID:ganon {wildcards.vers} {wildcards.samp} {wildcards.dtbs} {wildcards.args}\\n@@SEQUENCEID\\tBINID\\tTAXID\\n" > {output.bioboxes}
+        echo "{params.header}" > {output.bioboxes}
 
         # if numeric (taxid) or assembly
         awk 'FS="\\t"{{if($2 ~ /^[0-9]+$/){{print substr($1,1,length($1)-2)"\\t0\\t"$2}}}}' {input.lca} >> {output.bioboxes}
@@ -106,4 +110,53 @@ rule ganon_classify_format:
         <(awk 'FS="\\t"{{if( $2 !~ /^[0-9]+$/){{print substr($1,1,length($1)-2)"\\t"$2"\\t"$3}}}}' {input.lca} | sort -k 2,2) \
         <(cut -f 1,2 {input.dbtax} | sort | uniq | sort -k 1,1) \
         -t$'\\t' -o "1.1,1.2,2.2" >> {output.bioboxes}
+        """
+
+
+rule ganon_profile:
+    input:
+        rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"
+    output:
+        tre="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}.tre"
+    benchmark:
+        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}.profile.bench.tsv", config["repeat"])
+    log:
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}.profile.log"
+    threads:
+        config["threads"]
+    conda:
+        srcdir("../envs/ganon.yaml")
+    params:
+        path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
+        outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}", 
+        dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
+        input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
+        fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
+        args = lambda wildcards: str2args(wildcards.args)
+    shell:
+        """
+        # if path is provided, deactivate conda
+        if [[ ! -z "{params.path}" ]]; then
+            source deactivate;
+        fi
+        {params.path}ganon report \
+                           --db-prefix {params.dbprefix} \
+                           --input {input.rep} \
+                           --output-prefix {params.outprefix} \
+                           {params.fixed_args} {params.args} > {log} 2>&1
+        """
+
+rule ganon_profile_format:
+    input:
+        tre = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}.tre"
+    output:
+        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}.profile.bioboxes"
+    params:
+        header = lambda wildcards: header_bioboxes_profile("ganon", wildcards)
+    shell:
+        """
+        # bioboxes header
+        echo "{params.header}" > {output.bioboxes}
+
+        awk 'BEGIN{{FS="\\t";OFS="\\t"}}{{print $2 $1 $3 $4 $9}}'' >> {output.bioboxes}
         """

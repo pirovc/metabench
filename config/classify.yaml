@@ -1,6 +1,6 @@
 workdir: "./results/"
 threads: 8
-#benchmark: 1
+repeat: 1
 
 tools:
   ganon:

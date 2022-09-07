@@ -8,7 +8,7 @@ rule kraken2_build:
         fasta=temp("kraken2/{vers}/{dtbs}/{args}/input.fasta"),
         accession2taxid=temp("kraken2/{vers}/{dtbs}/{args}/taxonomy/kraken2.accession2taxid")
     benchmark:
-        "kraken2/{vers}/{dtbs}/{args}.build.bench.tsv"
+        repeat("kraken2/{vers}/{dtbs}/{args}.build.bench.tsv", config["repeat"])
     log:
         "kraken2/{vers}/{dtbs}/{args}.build.log"
     threads:
@@ -51,7 +51,7 @@ rule kraken2_classify:
     output:
         res=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res")
     benchmark:
-        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv"
+        repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv", config["repeat"])
     log:
         "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.log"
     threads:
@@ -89,15 +89,16 @@ rule kraken2_classify:
 
 rule kraken2_classify_format:
     input:
-        res="kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res",
+        res = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res",
     output:
-        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
+        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
     params:
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
+        header = lambda wildcards: header_bioboxes_classify("kraken2", wildcards)
     shell:
         """
         # bioboxes header
-        printf "@Version:0.9.1\\n@SampleID:kraken2 {wildcards.vers} {wildcards.samp} {wildcards.dtbs} {wildcards.args}\\n@@SEQUENCEID\\tBINID\\tTAXID\\n" > {output}
+        echo "{params.header}" > {output.bioboxes}
 
         # output header changes when sinle or paired (/1 or nothing)
         if [[ -z "{params.input_fq2}" ]]; then # single-end
@@ -106,5 +107,5 @@ rule kraken2_classify_format:
             header_suffix=0;
         fi
 
-        grep "^C" {input.res} | awk -v header_suffix="${{header_suffix}}" 'FS="\\t"{{print substr($2,1,length($2)-header_suffix)"\\t0\\t"$3}}' >> {output}
+        grep "^C" {input.res} | awk -v header_suffix="${{header_suffix}}" 'FS="\\t"{{print substr($2,1,length($2)-header_suffix)"\\t0\\t"$3}}' >> {output.bioboxes}
         """
