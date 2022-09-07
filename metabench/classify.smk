@@ -4,7 +4,7 @@ include: "../tools/ganon.smk"
 include: "../tools/kraken2.smk"
 
 
-def input_all(wildcards, ext: list):
+def input_classify():
     out = []
     for tool in config["tools"]:
         if tool in config["run"]:
@@ -19,16 +19,23 @@ def input_all(wildcards, ext: list):
                                 path = tool + "/" + vers + "/" + samp + "/" + dtbs + "/" + dtbs_args + "/"
                                 # build product of all arguments (single or range)
                                 for args in args_product(config["run"][tool][vers]["args"]):
-                                    # For every final final extension
-                                    for e in ext:
-                                        out.append(path + join_args(args) + "." + e)
-    
+                                    out.append(path + join_args(args))
     return out
 
+def input_profile():
+    out = []
+    for prefix in input_classify():
+        tool = prefix.split("/")[0]
+        vers = prefix.split("/")[1]
+        if "args_profile" in config["run"][tool][vers]:
+            for args in args_product(config["run"][tool][vers]["args_profile"]):
+                out.append(prefix + "/" + join_args(args))
+    return out
 
 rule all:
     input:
-        lambda wildcards: unpack(input_all(wildcards, ext=["classify.bioboxes", "classify.bench.json"]))
+        classify = expand("{i}.{ext}", i=input_classify(), ext=["classify.bioboxes", "classify.bench.json"]),
+        profile = expand("{i}.{ext}", i=input_profile(), ext=["profile.bioboxes"])
 
 rule time:
     input:

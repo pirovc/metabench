@@ -4,7 +4,7 @@ include: "../tools/ganon.smk"
 include: "../tools/kraken2.smk"
 
 
-def input_all(wildcards, ext: list):
+def input_build():
     out = []
     for tool in config["tools"]:
         if tool in config["run"]:
@@ -15,16 +15,12 @@ def input_all(wildcards, ext: list):
                         path = tool + "/" + vers + "/" + dtbs + "/"
                         # build product of all arguments (single or range)
                         for args in args_product(config["run"][tool][vers][dtbs]["args"] if "args" in config["run"][tool][vers][dtbs] else None):
-                            # For every final final extension
-                            for e in ext:
-                                out.append(path + join_args(args) + "." + e)
-    
+                            out.append(path + join_args(args))
     return out
-
 
 rule all:
     input:
-        lambda wildcards: unpack(input_all(wildcards, ext=["build.bench.json", "build.size.json"]))
+        build = expand("{i}.{ext}", i=input_build(), ext=["build.bench.json", "build.size.json"])
 
 rule time:
     input:

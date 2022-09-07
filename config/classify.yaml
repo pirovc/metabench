@@ -21,8 +21,10 @@ run:
       fixed_args:
         "--ganon-path": "/home/pirov/code/ganon/"
       args:
-        # "--rel-cutoff": [0.25, 0.35, 0.1]
-        # "--rel-filter": 0.15
+        "--rel-cutoff": [0.25, 0.35, 0.1]
+        "--rel-filter": 0.15
+      args_profile:
+        "--min-count": [0, 0.2, 0.05]
 
   kraken2:
     "2.1.2":
@@ -31,3 +33,4 @@ run:
       fixed_args:
       args:
         "--confidence": [0, 0.2, 0.1]
+      #args_profile:

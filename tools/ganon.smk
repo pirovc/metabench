@@ -117,7 +117,7 @@ rule ganon_profile:
     input:
         rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"
     output:
-        tre="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}.tre"
+        tre = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}.tre"
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}.profile.bench.tsv", config["repeat"])
     log:
@@ -131,8 +131,7 @@ rule ganon_profile:
         outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}/{prof_args}", 
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
-        fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
-        args = lambda wildcards: str2args(wildcards.args)
+        prof_args = lambda wildcards: str2args(wildcards.prof_args)
     shell:
         """
         # if path is provided, deactivate conda
@@ -143,7 +142,7 @@ rule ganon_profile:
                            --db-prefix {params.dbprefix} \
                            --input {input.rep} \
                            --output-prefix {params.outprefix} \
-                           {params.fixed_args} {params.args} > {log} 2>&1
+                           {params.prof_args} > {log} 2>&1
         """
 
 rule ganon_profile_format:
@@ -158,5 +157,5 @@ rule ganon_profile_format:
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
 
-        awk 'BEGIN{{FS="\\t";OFS="\\t"}}{{print $2 $1 $3 $4 $9}}'' >> {output.bioboxes}
+        awk 'BEGIN{{FS="\\t";OFS="\\t"}}{{print $2,$1,$3,$4,$9}}' {input.tre} >> {output.bioboxes}
         """

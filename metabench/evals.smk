@@ -4,7 +4,7 @@ import os
 workdir: config["workdir"]
 include: "util.py"
 
-def input_all(wildcards, ext: list):
+def input_evals_classify():
     out = []
     for file in glob.glob('**/*.classify.bioboxes', recursive=True):
         # without ".classify.bioboxes"
@@ -12,13 +12,12 @@ def input_all(wildcards, ext: list):
         # Just generate for prefixes with sample in config fige
         sample = prefix.split("/")[3]
         for sample in config["samples"].keys():
-            for e in ext:
-                out.append(prefix + "." + e)
+            out.append(prefix)
     return out
 
 rule all:
     input:
-        lambda wildcards: unpack(input_all(wildcards, ext=["classify.stats.json", "classify.evals.json"]))
+        evals_classify = expand("{i}.{ext}", i=input_evals_classify(), ext=["classify.stats.json", "classify.evals.json"])
 
 
 rule stats:

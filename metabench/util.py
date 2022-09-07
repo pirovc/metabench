@@ -92,7 +92,7 @@ def header_bioboxes_classify(tool, wildcards):
     #https://github.com/bioboxes/rfc/blob/master/data-format/binning.mkd
     header = ""
     header += "@Version:0.10.0\n"
-    header += "@SampleID: " + tool + " ".join(wildcards) + "\n"
+    header += "@SampleID: " + tool + " " + " ".join(wildcards) + "\n"
     header += "@@SEQUENCEID\tTAXID\tBINID"
     return header
 
@@ -101,7 +101,7 @@ def header_bioboxes_profile(tool, wildcards):
     #https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd
     header = ""
     header += "@Version:0.10.0\n"
-    header += "@SampleID: " + tool + " ".join(wildcards) + "\n"
+    header += "@SampleID: " + tool + " " + " ".join(wildcards) + "\n"
     header += "@Ranks: " + "\n"
     header += "@Taxonomy: " + "\n"
     header += "@@TAXID\tRANK\tTAXPATH\tTAXPATHSN\tPERCENTAGE"
