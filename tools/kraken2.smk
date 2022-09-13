@@ -15,6 +15,7 @@ rule kraken2_build:
         config["threads"]
     conda:
         srcdir("../envs/kraken2.yaml")
+    priority: 1  # to run before bracken
     params:
         path = lambda wildcards: config["tools"]["kraken2"][wildcards.vers],
         outprefix = "kraken2/{vers}/{dtbs}/{args}/",
@@ -28,9 +29,10 @@ rule kraken2_build:
         tar xf {params.db[taxonomy_files]} -C {params.outprefix}taxonomy/ nodes.dmp names.dmp > {log} 2>&1
         find {params.db[folder]} -name *{params.db[extension]} | xargs zcat > {output.fasta} 2>> {log}
         awk 'BEGIN {{FS="\\t";OFS="\\t"; print "accession","accession.version","taxid","gi"}}{{ split($4,acc,"."); print acc[1],$4,$6,"0" }}' {params.db[details]} > {output.accession2taxid} 2>> {log}
+        # Kraken2
         {params.path}kraken2-build --db {params.outprefix} --no-masking --add-to-library {output.fasta} >> {log} 2>&1
         {params.path}kraken2-build --build --db {params.outprefix} --threads {threads} {params.args} {params.fixed_args} >> {log} 2>&1
-        rm -rfv {params.outprefix}library/ {params.outprefix}seqid2taxid.map {params.outprefix}taxonomy/prelim_map.txt >> {log} 2>&1
+        rm -rfv {params.outprefix}taxonomy/prelim_map.txt >> {log} 2>&1
         """
 
 rule kraken2_build_size:
@@ -49,7 +51,8 @@ rule kraken2_classify:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
-        res=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res")
+        res=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res"),
+        rep=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep")
     benchmark:
         repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv", config["repeat"])
     log:
@@ -60,7 +63,6 @@ rule kraken2_classify:
         srcdir("../envs/kraken2.yaml")
     params:
         path = lambda wildcards: config["tools"]["kraken2"][wildcards.vers],
-        outprefix = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}", 
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/",
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["kraken2"][wildcards.vers]["fixed_args"]),
@@ -73,6 +75,7 @@ rule kraken2_classify:
         if [[ -z "{params.input_fq2}" ]]; then # single-end
             {params.path}kraken2 --db {params.dbprefix} \
                                  --output {output.res} \
+                                 --report {output.rep} \
                                  --threads {threads} \
                                  --gzip-compressed \
                                  {params.args} {params.fixed_args} \
@@ -80,6 +83,7 @@ rule kraken2_classify:
         else # paired-end
             {params.path}kraken2 --db {params.dbprefix} \
                                  --output {output.res} \
+                                 --report {output.rep} \
                                  --threads {threads} \
                                  --gzip-compressed \
                                  {params.args} {params.fixed_args} \
@@ -109,3 +113,7 @@ rule kraken2_classify_format:
 
         grep "^C" {input.res} | awk -v header_suffix="${{header_suffix}}" 'FS="\\t"{{print substr($2,1,length($2)-header_suffix)"\\t0\\t"$3}}' >> {output.bioboxes}
         """
+
+# running with bracken
+#
+# rule kraken2_profile_format:

@@ -1,6 +1,6 @@
 from itertools import product
 import numpy as np
-
+from multitax import NcbiTx, CustomTx
 
 def join_args(args):
     return "_".join(args)
@@ -97,12 +97,33 @@ def header_bioboxes_classify(tool, wildcards):
     return header
 
 
-def header_bioboxes_profile(tool, wildcards):
+def header_bioboxes_profile(tool, ranks, taxonomy_files, wildcards):
     #https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd
     header = ""
     header += "@Version:0.10.0\n"
     header += "@SampleID: " + tool + " " + " ".join(wildcards) + "\n"
-    header += "@Ranks: " + "\n"
-    header += "@Taxonomy: " + "\n"
+    header += "@Ranks: " + "|".join(ranks) + "\n"
+    header += "@Taxonomy: " + ",".join(taxonomy_files) + "\n"
     header += "@@TAXID\tRANK\tTAXPATH\tTAXPATHSN\tPERCENTAGE"
     return header
+
+def bioboxes_profile(report_file, col_taxid, col_perc, taxonomy, taxonomy_files, ranks):
+    prof = ""
+    if taxonomy == "ncbi":
+        tax = NcbiTx(files=taxonomy_files, undefined_name="", undefined_node="")
+    else:
+        tax = CustomTx(files=taxonomy_files, undefined_name="", undefined_node="")
+    
+    with open(report_file, "r") as file:
+        for line in file:
+            fields = line.rstrip().split("\t")
+            taxid = fields[col_taxid]
+            rank = tax.rank(taxid) 
+            if rank in ranks:
+                prof += taxid + "\t"
+                prof += tax.rank(taxid) + "\t"
+                prof += "|".join(tax.lineage(taxid, ranks=ranks)[0:ranks.index(rank)+1]) + "\t"
+                prof += "|".join(tax.name_lineage(taxid, ranks=ranks)[0:ranks.index(rank)+1]) + "\t"
+                prof += fields[col_perc] + "\n"
+
+    return prof

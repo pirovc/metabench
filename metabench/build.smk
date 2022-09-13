@@ -1,5 +1,6 @@
 workdir: config["workdir"]
 include: "util.py"
+include: "../tools/bracken.smk"
 include: "../tools/ganon.smk"
 include: "../tools/kraken2.smk"
 
@@ -45,9 +46,9 @@ echo "{{
 
 rule fsize:
     input:
-        fsize = "{tool}/{vers}/{dtbs}/{args}.size.tsv"
+        fsize = "{tool}/{vers}/{dtbs}/{args}.build.size.tsv"
     output:
-        json = "{tool}/{vers}/{dtbs}/{args}.size.json"
+        json = "{tool}/{vers}/{dtbs}/{args}.build.size.json"
     params:
         json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
                                                            "version": wildcards.vers,

@@ -1,5 +1,6 @@
 workdir: config["workdir"]
 include: "util.py"
+include: "../tools/bracken.smk"
 include: "../tools/ganon.smk"
 include: "../tools/kraken2.smk"
 
@@ -22,20 +23,9 @@ def input_classify():
                                     out.append(path + join_args(args))
     return out
 
-def input_profile():
-    out = []
-    for prefix in input_classify():
-        tool = prefix.split("/")[0]
-        vers = prefix.split("/")[1]
-        if "args_profile" in config["run"][tool][vers]:
-            for args in args_product(config["run"][tool][vers]["args_profile"]):
-                out.append(prefix + "/" + join_args(args))
-    return out
-
 rule all:
     input:
-        classify = expand("{i}.{ext}", i=input_classify(), ext=["classify.bioboxes", "classify.bench.json"]),
-        profile = expand("{i}.{ext}", i=input_profile(), ext=["profile.bioboxes"])
+        classify = expand("{i}.{ext}", i=input_classify(), ext=["classify.bioboxes", "classify.bench.json", "profile.bioboxes"])
 
 rule time:
     input:
