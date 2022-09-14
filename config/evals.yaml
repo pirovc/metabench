@@ -2,7 +2,9 @@ workdir: "results/"
 threads: 8
 
 samples:
-  "sample_name1": "/home/pirov/code/ganon_benchmark/files/reads/cami/toy/H01_1M_readid_assembly_taxid.txt"
+  "sample_name1": 
+    "classify": "/home/pirov/code/ganon_benchmark/files/reads/cami/toy/H01_1M_readid_assembly_taxid.txt"
+    "profile": ""
 
 dbs:
   "arc_cg_rs_k19w35": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/--kmer-size=19_--window-size=35.tax"

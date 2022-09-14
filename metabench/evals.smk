@@ -17,10 +17,34 @@ def input_evals_classify():
 
 rule all:
     input:
-        evals_classify = expand("{i}.{ext}", i=input_evals_classify(), ext=["classify.stats.json", "classify.evals.json"])
+        evals_classify = expand("{i}.{ext}", i=input_evals_classify(), ext=["classify.stats.json", "classify.evals.json", "profile.stats.json"])
 
 
-rule stats:
+rule stats_profile:
+    input:
+        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes"
+    output:
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.stats.json"
+    params:
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
+                                                           "version": wildcards.vers,
+                                                           "sample": wildcards.samp,
+                                                           "database": wildcards.dtbs,
+                                                           "database_arguments": str2args(wildcards.dtbs_args),
+                                                           "arguments": str2args(wildcards.args)}),
+        ranks = " ".join(config["ranks"])
+    shell: 
+        """
+        stats=$(grep -v "^@" {input.bioboxes} | awk 'BEGIN{{FS="\\t"}}{{sum_rank[$2]+=$5}}END{{for(r in sum_rank){{ print "    \\""r"\\": " sum_rank[r] ","}}}}')
+
+echo "{{
+{params.json_wildcards}\\"stats\\": {{
+${{stats::-1}}
+}}
+}}" > {output.json}
+        """
+
+rule stats_classify:
     input:
         bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
     output:
@@ -51,7 +75,7 @@ echo "{{
 }}" > {output.json}
         """
 
-rule evals:
+rule evals_classify:
     input:
         bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
     output:
@@ -71,7 +95,7 @@ rule evals:
         ranks = " ".join(config["ranks"]),
         taxonomy_files = " ".join(config["taxonomy_files"]),
         db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
-        gt = lambda wildcards: config["samples"][wildcards.samp]
+        gt = lambda wildcards: config["samples"][wildcards.samp]["classify"]
     conda: srcdir("../envs/evals.yaml")
     shell: 
         """

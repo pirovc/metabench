@@ -134,5 +134,5 @@ rule ganon_profile_format:
         """
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
-        echo "{params.profile}" >> {output.bioboxes}
+        echo -n "{params.profile}" >> {output.bioboxes}
         """
