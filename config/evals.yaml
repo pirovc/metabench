@@ -4,7 +4,7 @@ threads: 8
 samples:
   "sample_name1": 
     "classify": "/home/pirov/code/ganon_benchmark/files/reads/cami/toy/H01_1M_readid_assembly_taxid.txt"
-    "profile": ""
+    "profile": "/home/pirov/code/metabench/results/kraken2/2.1.2/sample_name1/arc_cg_rs/default/--confidence=0.0.profile.bioboxes"
 
 dbs:
   "arc_cg_rs_k19w35": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/--kmer-size=19_--window-size=35.tax"
@@ -22,3 +22,9 @@ ranks:
 taxonomy: "ncbi"
 taxonomy_files: 
   - "../taxdump.tar.gz"
+
+threhsold_profile:
+  - 0
+  - 1
+  - 10
+  - 50

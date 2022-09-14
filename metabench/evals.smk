@@ -17,7 +17,10 @@ def input_evals_classify():
 
 rule all:
     input:
-        evals_classify = expand("{i}.{ext}", i=input_evals_classify(), ext=["classify.stats.json", "classify.evals.json", "profile.stats.json"])
+        evals_classify = expand("{i}.{ext}", i=input_evals_classify(), ext=["classify.stats.json", 
+                                                                            "classify.evals.json",
+                                                                            "profile.stats.json",
+                                                                            "profile.evals.json"])
 
 
 rule stats_profile:
@@ -99,7 +102,7 @@ rule evals_classify:
     conda: srcdir("../envs/evals.yaml")
     shell: 
         """
-        python3 {params.scripts_path}evals.py \
+        python3 {params.scripts_path}evals_classify.py \
                 --ranks {params.ranks} \
                 --input-results {input.bioboxes} \
                 --input-ground-truth {params.gt} \
@@ -118,5 +121,45 @@ $(cat {output.cumu_json})
 \\"rank\\":
 $(cat {output.rank_json})
 }}
+}}" > {output.json}
+        """
+
+rule evals_profile:
+    input:
+        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes"
+    output:
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.evals.json"
+    log:
+        "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.evals.log"
+    params:
+        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
+                                                           "version": wildcards.vers,
+                                                           "sample": wildcards.samp,
+                                                           "database": wildcards.dtbs,
+                                                           "database_arguments": str2args(wildcards.dtbs_args),
+                                                           "arguments": str2args(wildcards.args)}),
+        scripts_path = srcdir("../scripts/"),
+        ranks = " ".join(config["ranks"]),
+        taxonomy_files = " ".join(config["taxonomy_files"]),
+        db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
+        gt = lambda wildcards: config["samples"][wildcards.samp]["profile"],
+        threhsold_profile = " ".join(map(str,config["threhsold_profile"]))
+        
+    conda: srcdir("../envs/evals.yaml")
+    shell: 
+        """
+        python3 {params.scripts_path}evals_profile.py \
+                --ranks {params.ranks} \
+                --input-results {input.bioboxes} \
+                --input-ground-truth {params.gt} \
+                {params.db_profile} \
+                --taxonomy {config[taxonomy]} \
+                --taxonomy-files {params.taxonomy_files} \
+                --output-json {output.json} \
+                --thresholds {params.threhsold_profile} 2> {log}
+
+echo "{{
+{params.json_wildcards}\\"evals\\":
+$(cat {output.json})
 }}" > {output.json}
         """

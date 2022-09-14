@@ -14,8 +14,8 @@ default_ranks = ["root",
 
 def parse_tax(tax, files):
     tax_args = {"undefined_node": "",
-                "undefined_rank": "na",
-                "undefined_name": "na",
+                "undefined_rank": "",
+                "undefined_name": "",
                 "root_name": "root",
                 "root_rank": "root"}
 

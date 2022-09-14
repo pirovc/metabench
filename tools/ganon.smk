@@ -67,9 +67,9 @@ rule ganon_classify:
     shell:
         """
         # if path is provided, deactivate conda
-        if [[ ! -z "{params.path}" ]]; then
-            source deactivate;
-        fi
+        # if [[ ! -z "{params.path}" ]]; then
+        #     source deactivate;
+        # fi
         if [[ -z "{params.input_fq2}" ]]; then # single-end
             {params.path}ganon classify \
                                --db-prefix {params.dbprefix} \
@@ -117,22 +117,28 @@ rule ganon_profile_format:
         tre = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.tre"
     output:
         bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes"
+    log:
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes.log"
     conda:
         srcdir("../envs/evals.yaml")
     params:
+        scripts_path = srcdir("../scripts/"),
+        ranks = " ".join(config["profile_ranks"]),
+        taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"],
         header = lambda wildcards: header_bioboxes_profile("ganon",
                                                            config["profile_ranks"],
                                                            [os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"],
                                                            wildcards),
-        profile = lambda wildcards, input: bioboxes_profile(input.tre,
-                                                            1,
-                                                            8,
-                                                            "custom",
-                                                            [os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"],
-                                                            config["profile_ranks"])
-    shell:
+    shell: 
         """
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
-        echo -n "{params.profile}" >> {output.bioboxes}
+        python3 {params.scripts_path}profile.py \
+                                    --taxid-col 1 \
+                                    --perc-col 8 \
+                                    --input-file {input.tre} \
+                                    --taxonomy custom \
+                                    --taxonomy-files {params.taxonomy_files} \
+                                    --ranks {params.ranks} >> {output.bioboxes} 2> {log}
+
         """

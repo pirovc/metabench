@@ -52,24 +52,30 @@ rule bracken_profile_format:
         bra = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.bracken"
     output:
         bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes"
+    log:
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes.log"
     conda:
         srcdir("../envs/evals.yaml")
     params:
+        scripts_path = srcdir("../scripts/"),
+        ranks = " ".join(config["profile_ranks"]),
+        taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
+                                            os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
         header = lambda wildcards: header_bioboxes_profile("kraken2",
                                                            config["profile_ranks"],
                                                            [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
                                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
                                                            wildcards),
-        profile = lambda wildcards, input: bioboxes_profile(input.bra,
-                                                            4,
-                                                            0,
-                                                            "ncbi",
-                                                            [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
-                                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
-                                                            config["profile_ranks"])
-    shell:
+    shell: 
         """
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
-        echo -n "{params.profile}" >> {output.bioboxes}
+        python3 {params.scripts_path}profile.py \
+                                    --taxid-col 4 \
+                                    --perc-col 0 \
+                                    --input-file {input.bra} \
+                                    --taxonomy ncbi \
+                                    --taxonomy-files {params.taxonomy_files} \
+                                    --ranks {params.ranks} >> {output.bioboxes} 2> {log}
+
         """

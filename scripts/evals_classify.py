@@ -133,10 +133,6 @@ def main():
         output_rank.close()
 
 
-def print_log(text):
-    sys.stderr.write(text+"\n")
-
-
 def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
 
     stats = {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0}
