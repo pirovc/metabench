@@ -44,7 +44,7 @@ echo "{{
 }}" > {output.json}
         """
 
-rule fsize:
+rule size:
     input:
         fsize = "{tool}/{vers}/{dtbs}/{args}.build.size.tsv"
     output:

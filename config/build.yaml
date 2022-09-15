@@ -1,47 +1,45 @@
-workdir: "./databases/"
+workdir: "/home/pirov/data/metabench_data/databases/"
 threads: 8
 repeat: 1
 
 tools:
   ganon:
-    "1.2.0": "/home/pirov/code/ganon/"
+    "1.2.0": ""
   kraken2:
     "2.1.2": ""
   bracken:
     "2.7": ""
 
 dbs:
-  "arc_cg_rs":
-    folder: "/home/pirov/data/arc_cg_rs/2022-09-05_16-39-33/files/"
+  "arc_bac_rs_cg_t1s":
+    folder: "/home/pirov/data/abfv_rs_cg_t3s/ab_t1s/files/"
     extension: ".fna.gz"
-    details: "/home/pirov/data/arc_cg_rs/2022-09-05_16-39-33/2022-09-05_16-39-33_sequence_accession.txt"
+    details: "/home/pirov/data/abfv_rs_cg_t3s/20220915/2022-09-15_14-49-30_sequence_accession.txt"
     taxonomy: "ncbi"
-    taxonomy_files: "../taxdump.tar.gz"
+    taxonomy_files: "/home/pirov/data/abfv_rs_cg_t3s/20220915/taxdump.tar.gz"
 
 run:
   ganon:
     "1.2.0":
-      "arc_cg_rs":
+      "arc_bac_rs_cg_t1s":
         fixed_args:
-          "--ganon-path": "/home/pirov/code/ganon/"
-          "--ncbi-file-info": "/home/pirov/data/arc_cg_rs/assembly_summary.txt"
+          "--ncbi-file-info": "/home/pirov/data/abfv_rs_cg_t3s/ab_t1s/assembly_summary.txt"
         args:
-          "--kmer-size": [19, 22, 3]
-          "--window-size": 35
+          "--level": "species"
 
   kraken2:
     "2.1.2":
-      "arc_cg_rs":
+      "arc_bac_rs_cg_t1s":
         fixed_args:
         args:
+          "--max-db-size": 26843545600
   
   bracken:
     "2.7":
-      "arc_cg_rs":
+      "arc_bac_rs_cg_t1s":
         fixed_args:
-          "-d": "/home/pirov/code/metabench/databases/kraken2/2.1.2/arc_cg_rs/default/"
+          "-d": "/home/pirov/code/metabench/databases/kraken2/2.1.2/arc_bac_rs_cg_t1s/default/"
         args:
-          "-l": [50, 250, 50]
 
 # run:
 #    tool:

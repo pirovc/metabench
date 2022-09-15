@@ -9,10 +9,11 @@ def input_evals_classify():
     for file in glob.glob('**/*.classify.bioboxes', recursive=True):
         # without ".classify.bioboxes"
         prefix = os.path.splitext(os.path.splitext(file)[0])[0]
-        # Just generate for prefixes with sample in config fige
-        sample = prefix.split("/")[3]
-        for sample in config["samples"].keys():
+        # Just generate for prefixes with sample in config file
+        sample = prefix.split("/")[2]
+        if sample in config["samples"].keys():
             out.append(prefix)
+    print(out)
     return out
 
 rule all:
@@ -63,7 +64,7 @@ rule stats_classify:
                                                            "arguments": str2args(wildcards.args)}),
         scripts_path = srcdir("../scripts/"),
         ranks = " ".join(config["ranks"]),
-        taxonomy_files = " ".join(config["taxonomy_files"])
+        taxonomy_files = config["taxonomy_files"]
     conda:
         srcdir("../envs/evals.yaml")
     shell: 
@@ -96,7 +97,7 @@ rule evals_classify:
                                                            "arguments": str2args(wildcards.args)}),
         scripts_path = srcdir("../scripts/"),
         ranks = " ".join(config["ranks"]),
-        taxonomy_files = " ".join(config["taxonomy_files"]),
+        taxonomy_files = config["taxonomy_files"],
         db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
         gt = lambda wildcards: config["samples"][wildcards.samp]["classify"]
     conda: srcdir("../envs/evals.yaml")
@@ -140,7 +141,7 @@ rule evals_profile:
                                                            "arguments": str2args(wildcards.args)}),
         scripts_path = srcdir("../scripts/"),
         ranks = " ".join(config["ranks"]),
-        taxonomy_files = " ".join(config["taxonomy_files"]),
+        taxonomy_files = join(config["taxonomy_files"],
         db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
         gt = lambda wildcards: config["samples"][wildcards.samp]["profile"],
         threhsold_profile = " ".join(map(str,config["threhsold_profile"]))

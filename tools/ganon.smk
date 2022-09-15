@@ -29,6 +29,7 @@ rule ganon_build:
         --taxonomy {params.db[taxonomy]} \
         --taxonomy-files {params.db[taxonomy_files]} \
         --threads {threads} \
+        --verbose \
         {params.fixed_args} {params.args} > {log} 2>&1
         """
 
@@ -123,7 +124,7 @@ rule ganon_profile_format:
         srcdir("../envs/evals.yaml")
     params:
         scripts_path = srcdir("../scripts/"),
-        ranks = " ".join(config["profile_ranks"]),
+        ranks = lambda wildcards: " ".join(config["profile_ranks"]),
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"],
         header = lambda wildcards: header_bioboxes_profile("ganon",
                                                            config["profile_ranks"],

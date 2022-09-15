@@ -2,13 +2,19 @@ workdir: "results/"
 threads: 8
 
 samples:
-  "sample_name1": 
-    "classify": "/home/pirov/code/ganon_benchmark/files/reads/cami/toy/H01_1M_readid_assembly_taxid.txt"
-    "profile": "/home/pirov/code/metabench/results/kraken2/2.1.2/sample_name1/arc_cg_rs/default/--confidence=0.0.profile.bioboxes"
+  "mende10.1M":
+    "classify": "/home/pirov/data/reads/mende/illumina_10species.1M.binning.bioboxes.gz"
+    "profile": "/home/pirov/data/reads/mende/illumina_10species.profile.bioboxes"
+  "mende100.1M":
+    "classify": "/home/pirov/data/reads/mende/illumina_100species.1M.binning.bioboxes.gz"
+    "profile": "/home/pirov/data/reads/mende/illumina_100species.profile.bioboxes"
+  "mende400.1M":
+    "classify": "/home/pirov/data/reads/mende/illumina_400species.1M.binning.bioboxes.gz"
+    "profile": "/home/pirov/data/reads/mende/illumina_400species.profile.bioboxes"
 
 dbs:
-  "arc_cg_rs_k19w35": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/--kmer-size=19_--window-size=35.tax"
-  "arc_cg_rs_k35m31": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/--kmer-size=19_--window-size=35.tax"
+  #"arc_cg_rs": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/--kmer-size=19_--window-size=35/ganon_db.tax"
+  "abfv_rs_cg_t3s": "/home/pirov/data/metabench_data/databases/ganon/1.2.0/abfv_rs_cg_t3s/default.tax"
 
 ranks:
   - superkingdom
@@ -20,11 +26,13 @@ ranks:
   - species
 
 taxonomy: "ncbi"
-taxonomy_files: 
-  - "../taxdump.tar.gz"
+taxonomy_files: "/home/pirov/data/abfv_rs_cg_t3s/20220915/taxdump.tar.gz"
 
 threhsold_profile:
-  - 0
+  - 0.1
   - 1
+  - 5
   - 10
-  - 50
+  - 20
+
+

@@ -27,7 +27,7 @@ rule bracken_build_size:
     output:
         "bracken/{vers}/{dtbs}/{args}.build.size.tsv"
     shell:
-        "du --block-size=1 --dereference {input0} > {output}"  # output in bytes
+        "du --block-size=1 --dereference {input} > {output}"  # output in bytes
 
 
 rule bracken_profile:
@@ -58,7 +58,7 @@ rule bracken_profile_format:
         srcdir("../envs/evals.yaml")
     params:
         scripts_path = srcdir("../scripts/"),
-        ranks = " ".join(config["profile_ranks"]),
+        ranks = lambda wildcards: " ".join(config["profile_ranks"]),
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
         header = lambda wildcards: header_bioboxes_profile("kraken2",
