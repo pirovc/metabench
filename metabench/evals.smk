@@ -13,7 +13,6 @@ def input_evals_classify():
         sample = prefix.split("/")[2]
         if sample in config["samples"].keys():
             out.append(prefix)
-    print(out)
     return out
 
 rule all:
@@ -141,7 +140,7 @@ rule evals_profile:
                                                            "arguments": str2args(wildcards.args)}),
         scripts_path = srcdir("../scripts/"),
         ranks = " ".join(config["ranks"]),
-        taxonomy_files = join(config["taxonomy_files"],
+        taxonomy_files = config["taxonomy_files"],
         db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
         gt = lambda wildcards: config["samples"][wildcards.samp]["profile"],
         threhsold_profile = " ".join(map(str,config["threhsold_profile"]))

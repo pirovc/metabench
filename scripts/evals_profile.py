@@ -123,11 +123,13 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
         l2_ranks = defaultdict(float)
         final_stats[threshold] = defaultdict(dict)
 
+        res_thr = {}
         for rank in fixed_ranks:
-            res_thr = {t:a for t, a in res[rank].items() if a >= threshold}
+            res_thr[rank] = {t:a for t, a in res[rank].items() if a >= threshold}
 
+        for rank in fixed_ranks:
             # Keep only above threshold
-            res_taxids = set(res_thr.keys())
+            res_taxids = set(res_thr[rank].keys())
             gt_taxids = set(gt[rank].keys())
             db_taxids = set(db[rank]) if rank in db else set()
 
@@ -140,7 +142,7 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
             # everything on gt not in res is a false negative
             fn_ranks[rank] = len(gt_taxids.difference(res_taxids))
             
-            for res_taxid, res_abundance in res_thr.items():
+            for res_taxid, res_abundance in res_thr[rank].items():
                 gt_abundance = gt[rank][res_taxid] if res_taxid in gt[rank] else 0
                 d = gt_abundance - res_abundance
                 l1_ranks[rank] += abs(d)
@@ -163,7 +165,7 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
 
         for fr in fixed_ranks[::-1]:
             total_taxa_gt = len(gt[fr])
-            total_classified_rank = len(res_thr)
+            total_classified_rank = len(res_thr[fr])
             tp = tp_ranks[fr]
             fp = fp_ranks[fr]
             fn = fn_ranks[fr]

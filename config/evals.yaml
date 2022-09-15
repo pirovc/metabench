@@ -1,4 +1,4 @@
-workdir: "results/"
+workdir: "/home/pirov/data/metabench_data/results/"
 threads: 8
 
 samples:
@@ -14,7 +14,7 @@ samples:
 
 dbs:
   #"arc_cg_rs": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/--kmer-size=19_--window-size=35/ganon_db.tax"
-  "abfv_rs_cg_t3s": "/home/pirov/data/metabench_data/databases/ganon/1.2.0/abfv_rs_cg_t3s/default.tax"
+  "arc_bac_rs_cg_t1s": "/home/pirov/data/metabench_data/databases/ganon/1.2.0/arc_bac_rs_cg_t1s/--level=species/ganon_db.tax"
 
 ranks:
   - superkingdom
@@ -29,10 +29,10 @@ taxonomy: "ncbi"
 taxonomy_files: "/home/pirov/data/abfv_rs_cg_t3s/20220915/taxdump.tar.gz"
 
 threhsold_profile:
+  - 0
+  - 0.01
   - 0.1
+  - 0.5
   - 1
-  - 5
-  - 10
-  - 20
 
 

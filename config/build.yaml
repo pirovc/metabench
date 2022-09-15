@@ -38,7 +38,7 @@ run:
     "2.7":
       "arc_bac_rs_cg_t1s":
         fixed_args:
-          "-d": "/home/pirov/code/metabench/databases/kraken2/2.1.2/arc_bac_rs_cg_t1s/default/"
+          "-d": "/home/pirov/data/metabench_data/databases/kraken2/2.1.2/arc_bac_rs_cg_t1s/--max-db-size=26843545600/"
         args:
 
 # run:

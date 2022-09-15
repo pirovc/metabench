@@ -17,7 +17,7 @@ rule bracken_build:
         args = lambda wildcards: str2args(wildcards.args)
     shell: 
         """
-        ln -s {params.kraken2db}/* {params.outprefix}
+        ln -s {params.kraken2db} {params.outprefix}
         {params.path}bracken-build -t {threads} {params.args} {params.fixed_args} > {log} 2>&1
         """
 
