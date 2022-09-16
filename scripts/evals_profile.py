@@ -190,12 +190,13 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
                 final_stats[threshold]["l1"][fr] = l1_ranks[fr]
                 final_stats[threshold]["l2"][fr] = l2_ranks[fr]
 
-            y[fr].append(sens)
-            x[fr].append(prec)
+            y[fr].append(prec)
+            x[fr].append(sens)
 
     final_stats["summary"] = defaultdict(dict)
     for fr in fixed_ranks[::-1]:
-        aupr = np.trapz(y[fr], x=x[fr])
+        # add limits to calculate proper aupr
+        aupr = np.trapz([1] + y[fr] + [0], x=[0] + x[fr] + [1])
         print("aupr", fr, aupr, sep="\t", file=sys.stderr)
         final_stats["summary"]["aupr"][fr] = aupr
 

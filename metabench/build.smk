@@ -32,8 +32,8 @@ rule time:
         json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
                                                            "version": wildcards.vers,
                                                            "database": wildcards.dtbs,
-                                                           "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"]),
-                                                           "arguments": str2args(wildcards.args)}),
+                                                           "arguments": str2args(wildcards.args),
+                                                           "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}),
         json_bench = lambda wildcards, input: json_bench(input.bench)
     shell: 
         """
