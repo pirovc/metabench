@@ -113,6 +113,19 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
     final_stats = {}
     y=defaultdict(list)
     x=defaultdict(list)
+    
+    fields = ["gt",
+              "db",
+              "classified",
+              "tp",
+              "fp",
+              "fn",
+              "sensitivity_max_db",
+              "sensitivity",
+              "precision",
+              "f1_score",
+              "l1n",
+              "l2n"]
 
     for threshold in thresholds:
         db_ranks = defaultdict(int)
@@ -121,7 +134,9 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
         fn_ranks = defaultdict(int)
         l1_ranks = defaultdict(float)
         l2_ranks = defaultdict(float)
-        final_stats[threshold] = defaultdict(dict)
+        
+        threshold_key = "threshold>=" + str(threshold)
+        final_stats[threshold_key] = {f: {"ranks": defaultdict()} for f in fields}
 
         res_thr = {}
         for rank in fixed_ranks:
@@ -147,20 +162,9 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
                 d = gt_abundance - res_abundance
                 l1_ranks[rank] += abs(d)
                 l2_ranks[rank] += pow(d,2)
-    
-        header = ["--threshold:" + str(threshold) + "--",
-                  "gt",
-                  "db",
-                  "class",
-                  "tp",
-                  "fp",
-                  "fn",
-                  "sens_max_db",
-                  "sens",
-                  "prec",
-                  "f1s",
-                  "l1n",
-                  "l2n"]
+
+        header = ["--" + threshold_key + "--"] + fields
+                  
         print("\t".join(header), file=sys.stderr)
 
         for fr in fixed_ranks[::-1]:
@@ -174,31 +178,44 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
             prec = tp/total_classified_rank if total_classified_rank > 0 else 1
             f1s = (2*sens*prec)/float(sens+prec) if sens+prec > 0 else 0
 
-            print(fr, len(gt[fr]), db_ranks[fr], total_classified_rank, tp, fp, fn, "%.5f" %
-                  sens_max, "%.5f" % sens, "%.5f" % prec, "%.5f" % f1s, l1_ranks[fr], l2_ranks[fr], sep="\t", file=sys.stderr)
+            print(fr,
+                  len(gt[fr]),
+                  db_ranks[fr],
+                  total_classified_rank,
+                  tp,
+                  fp,
+                  fn,
+                  "%.5f" % sens_max,
+                  "%.5f" % sens,
+                  "%.5f" % prec,
+                  "%.5f" % f1s,
+                  l1_ranks[fr],
+                  l2_ranks[fr],
+                  sep="\t", file=sys.stderr)
         
             if output_json:
-                final_stats[threshold]["db"][fr] = db_ranks[fr]
-                final_stats[threshold]["gt"][fr] = len(gt[fr])
-                final_stats[threshold]["classified"][fr] = total_classified_rank
-                final_stats[threshold]["tp"][fr] = tp
-                final_stats[threshold]["fp"][fr] = fp
-                final_stats[threshold]["fn"][fr] = fn
-                final_stats[threshold]["sensitivity"][fr] = sens
-                final_stats[threshold]["precision"][fr] = prec
-                final_stats[threshold]["f1_score"][fr] = f1s
-                final_stats[threshold]["l1"][fr] = l1_ranks[fr]
-                final_stats[threshold]["l2"][fr] = l2_ranks[fr]
+                final_stats[threshold_key]["db"]["ranks"][fr] = db_ranks[fr]
+                final_stats[threshold_key]["gt"]["ranks"][fr] = len(gt[fr])
+                final_stats[threshold_key]["classified"]["ranks"][fr] = total_classified_rank
+                final_stats[threshold_key]["tp"]["ranks"][fr] = tp
+                final_stats[threshold_key]["fp"]["ranks"][fr] = fp
+                final_stats[threshold_key]["fn"]["ranks"][fr] = fn
+                final_stats[threshold_key]["sensitivity_max_db"]["ranks"][fr] = sens
+                final_stats[threshold_key]["sensitivity"]["ranks"][fr] = sens
+                final_stats[threshold_key]["precision"]["ranks"][fr] = prec
+                final_stats[threshold_key]["f1_score"]["ranks"][fr] = f1s
+                final_stats[threshold_key]["l1n"]["ranks"][fr] = l1_ranks[fr]
+                final_stats[threshold_key]["l2n"]["ranks"][fr] = l2_ranks[fr]
 
             y[fr].append(prec)
             x[fr].append(sens)
 
-    final_stats["summary"] = defaultdict(dict)
+    final_stats["summary"] = {"aupr": {"ranks": defaultdict()}}
     for fr in fixed_ranks[::-1]:
         # add limits to calculate proper aupr
         aupr = np.trapz([1] + y[fr] + [0], x=[0] + x[fr] + [1])
         print("aupr", fr, aupr, sep="\t", file=sys.stderr)
-        final_stats["summary"]["aupr"][fr] = aupr
+        final_stats["summary"]["aupr"]["ranks"][fr] = aupr
 
     if output_json:
         json.dump(final_stats, output_json, indent=4)

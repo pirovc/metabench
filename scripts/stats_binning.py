@@ -4,7 +4,6 @@ import sys
 import gzip
 import json
 from util import default_ranks, parse_tax, file_exists
-from collections import OrderedDict
 
 def main():
 
@@ -13,7 +12,7 @@ def main():
     parser.add_argument("-i", "--input-file",     metavar="",
                         type=file_exists, required=True, help="")
     parser.add_argument("-o", "--output-file",    metavar="",
-                        type=file_exists, help="json output file or STDOUT")
+                        type=str, help="json output file or STDOUT")
     parser.add_argument("-t", "--taxonomy",       metavar="",
                         type=str, help="custom, ncbi or gtdb")
     parser.add_argument("-x", "--taxonomy-files", metavar="",
@@ -33,9 +32,11 @@ def main():
     fixed_ranks = ["root"] + args.ranks if args.ranks else default_ranks
 
     # Generate results dict
-    res = {"reads_classified": 0,
-           "reads_invalid_tax": 0,
-           "ranks": OrderedDict({r:0 for r in fixed_ranks[::-1]})}
+    res = {"reads_invalid_tax": 0,
+           "reads_classified": { 
+             "total":0,
+             "ranks": {r:0 for r in fixed_ranks}}
+           }
 
     # bioboxes:
     # headers start with @
@@ -59,10 +60,8 @@ def main():
 
             # account for rank
             rank = tax.rank(closest_taxid)
-            if rank not in res["ranks"]:
-                res["ranks"][rank] = 0
-            res["ranks"][rank] += 1
-            res["reads_classified"] += 1
+            res["reads_classified"]["ranks"][rank] += 1
+            res["reads_classified"]["total"] += 1
 
     if args.output_file:
         with open(args.output_file, "w") as outfile:

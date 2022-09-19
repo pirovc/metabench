@@ -185,25 +185,25 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
         sum(tp_indirect_ranks.values())
     stats["fp"] = stats["classified"] - stats["tp"]
 
-    final_stats = defaultdict(dict)
-    header = ["--cumu_eval--",
-              "gt",
+    fields = ["gt",
               "db",
-              "class",
+              "classified",
               "tp",
               "fp",
-              "sens_max_db",
-              "sens",
-              "prec",
-              "f1s",
+              "sensitivity_max_db",
+              "sensitivity",
+              "precision",
+              "f1_score",
               "cs_db",
-              "cs_class",
+              "cs_classified",
               "cs_tp",
               "cs_fp",
               "tp_direct",
               "tp_indirect",
               "fp_lower",
               "fp_higher"]
+    final_stats = {f: {"ranks": defaultdict()} for f in fields}
+    header = ["--cumu_eval--"] + fields
 
     # taxonomic stats
     print("\t".join(header), file=sys.stderr)
@@ -250,21 +250,21 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
               fp_higher_ranks[fr], sep="\t", file=sys.stderr)
 
         if output_cumu:
-            final_stats["gt"][fr] = gt_ranks[fr]
-            final_stats["db"][fr] = db_ranks[fr]
-            final_stats["classified"][fr] = classified_ranks[fr]
-            final_stats["tp"][fr] = tp
-            final_stats["fp"][fr] = fp
-            final_stats["sensitivity_max_db"][fr] = sens_max_db
-            final_stats["sensitivity"][fr] = sens
-            final_stats["precision"][fr] = prec
-            final_stats["f1_score"][fr] = f1s
-            final_stats["cs_db"][fr] = cs_db
-            final_stats["cs_classified"][fr] = cs_class
-            final_stats["tp_direct"][fr] = tp_direct_ranks[fr]
-            final_stats["tp_indirect"][fr] = tp_indirect_ranks[fr]
-            final_stats["fp_lower"][fr] = fp_lower_ranks[fr]
-            final_stats["fp_higher"][fr] = fp_higher_ranks[fr]
+            final_stats["gt"]["ranks"][fr] = gt_ranks[fr]
+            final_stats["db"]["ranks"][fr] = db_ranks[fr]
+            final_stats["classified"]["ranks"][fr] = classified_ranks[fr]
+            final_stats["tp"]["ranks"][fr] = tp
+            final_stats["fp"]["ranks"][fr] = fp
+            final_stats["sensitivity_max_db"]["ranks"][fr] = sens_max_db
+            final_stats["sensitivity"]["ranks"][fr] = sens
+            final_stats["precision"]["ranks"][fr] = prec
+            final_stats["f1_score"]["ranks"][fr] = f1s
+            final_stats["cs_db"]["ranks"][fr] = cs_db
+            final_stats["cs_classified"]["ranks"][fr] = cs_class
+            final_stats["tp_direct"]["ranks"][fr] = tp_direct_ranks[fr]
+            final_stats["tp_indirect"]["ranks"][fr] = tp_indirect_ranks[fr]
+            final_stats["fp_lower"]["ranks"][fr] = fp_lower_ranks[fr]
+            final_stats["fp_higher"]["ranks"][fr] = fp_higher_ranks[fr]
 
     if output_cumu:
         json.dump(final_stats, output_cumu, indent=4)
@@ -332,17 +332,18 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
     stats["classified"] = total_reads_gt - stats["unclassified"]
     classified_ranks["root"] = stats["classified"]  # all have root
 
-    final_stats = defaultdict(dict)
-    header = ["--rank_eval--",
-              "gt",
+    fields = ["gt",
               "db",
-              "class",
+              "classified",
               "tp",
               "fp",
-              "sens_max_db",
-              "sens",
-              "prec",
-              "f1s"]
+              "sensitivity_max_db",
+              "sensitivity",
+              "precision",
+              "f1_score"]
+    final_stats = {f: {"ranks": defaultdict()} for f in fields}
+    header = ["--rank_eval--"] + fields
+
     print("\t".join(header), file=sys.stderr)
 
     sens_assembly = tp_ranks_assembly/total_reads_gt
@@ -364,14 +365,15 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
           "%.5f" % f1s_assembly, sep="\t", file=sys.stderr)
 
     if output_rank:
-        final_stats["db"]["assembly"] = db_ranks_assembly
-        final_stats["gt"]["assembly"] = gt_ranks_assembly
-        final_stats["classified"]["assembly"] = classified_ranks_assembly
-        final_stats["tp"]["assembly"] = tp_ranks_assembly
-        final_stats["fp"]["assembly"] = fp_ranks_assembly
-        final_stats["sensitivity"]["assembly"] = sens_assembly
-        final_stats["precision"]["assembly"] = prec_assembly
-        final_stats["f1_score"]["assembly"] = f1s_assembly
+        final_stats["db"]["ranks"]["assembly"] = db_ranks_assembly
+        final_stats["gt"]["ranks"]["assembly"] = gt_ranks_assembly
+        final_stats["classified"]["ranks"]["assembly"] = classified_ranks_assembly
+        final_stats["tp"]["ranks"]["assembly"] = tp_ranks_assembly
+        final_stats["fp"]["ranks"]["assembly"] = fp_ranks_assembly
+        final_stats["sensitivity_max_db"]["ranks"]["assembly"] = sens_max_assembly
+        final_stats["sensitivity"]["ranks"]["assembly"] = sens_assembly
+        final_stats["precision"]["ranks"]["assembly"] = prec_assembly
+        final_stats["f1_score"]["ranks"]["assembly"] = f1s_assembly
 
     for fr in fixed_ranks[::-1]:
         # if root, all classified are true
@@ -382,18 +384,28 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
         prec = tp/classified_ranks[fr] if classified_ranks[fr] > 0 else 0
         f1s = (2*sens*prec)/float(sens+prec) if sens+prec > 0 else 0
 
-        print(fr, gt_ranks[fr], db_ranks[fr], classified_ranks[fr], tp, fp, "%.5f" %
-              sens_max, "%.5f" % sens, "%.5f" % prec, "%.5f" % f1s, sep="\t", file=sys.stderr)
+        print(fr,
+              gt_ranks[fr],
+              db_ranks[fr],
+              classified_ranks[fr],
+              tp,
+              fp,
+              "%.5f" % sens_max,
+              "%.5f" % sens,
+              "%.5f" % prec,
+              "%.5f" % f1s,
+              sep="\t", file=sys.stderr)
 
         if output_rank:
-            final_stats["db"][fr] = db_ranks[fr]
-            final_stats["gt"][fr] = gt_ranks[fr]
-            final_stats["classified"][fr] = classified_ranks[fr]
-            final_stats["tp"][fr] = tp
-            final_stats["fp"][fr] = fp
-            final_stats["sensitivity"][fr] = sens
-            final_stats["precision"][fr] = prec
-            final_stats["f1_score"][fr] = f1s
+            final_stats["db"]["ranks"][fr] = db_ranks[fr]
+            final_stats["gt"]["ranks"][fr] = gt_ranks[fr]
+            final_stats["classified"]["ranks"][fr] = classified_ranks[fr]
+            final_stats["tp"]["ranks"][fr] = tp
+            final_stats["fp"]["ranks"][fr] = fp
+            final_stats["sensitivity_max_db"]["ranks"][fr] = sens_max
+            final_stats["sensitivity"]["ranks"][fr] = sens
+            final_stats["precision"]["ranks"][fr] = prec
+            final_stats["f1_score"]["ranks"][fr] = f1s
 
     if output_rank:
         json.dump(final_stats, output_rank, indent=4)

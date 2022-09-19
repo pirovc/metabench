@@ -27,25 +27,17 @@ rule all:
     input:
         classify = expand("{i}.{ext}", i=input_classify(), ext=["classify.bioboxes", "classify.bench.json", "profile.bioboxes"])
 
-rule time:
+rule bench:
     input:
         bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv"
     output:
         json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.json"
     params:
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool, 
-                                                           "version": wildcards.vers,
-                                                           "sample": wildcards.samp,
-                                                           "database": wildcards.dtbs,
-                                                           "database_arguments": str2args(wildcards.dtbs_args),
-                                                           "arguments": str2args(wildcards.args),
-                                                           "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}),
-        json_bench = lambda wildcards, input: json_bench(input.bench),
-    shell: 
-        """
-echo "{{
-{params.json_wildcards}\\"bench\\": {{
-{params.json_bench}
-}}
-}}" > {output.json}
-        """
+        config = lambda wildcards: {"tool": wildcards.tool,
+                                    "version": wildcards.vers,
+                                    "database": wildcards.dtbs,
+                                    "database_arguments": str2args(wildcards.dtbs_args),
+                                    "arguments": str2args(wildcards.args),
+                                    "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
+    run:
+        json_write(json_benchmark(input.bench, mode="classify", category="benchmark", config = params.config), output.json)

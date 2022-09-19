@@ -23,26 +23,19 @@ rule all:
     input:
         build = expand("{i}.{ext}", i=input_build(), ext=["build.bench.json", "build.size.json"])
 
-rule time:
+rule bench:
     input:
         bench = "{tool}/{vers}/{dtbs}/{args}.build.bench.tsv"
     output:
         json = "{tool}/{vers}/{dtbs}/{args}.build.bench.json"
-    params: 
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
-                                                           "version": wildcards.vers,
-                                                           "database": wildcards.dtbs,
-                                                           "arguments": str2args(wildcards.args),
-                                                           "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}),
-        json_bench = lambda wildcards, input: json_bench(input.bench)
-    shell: 
-        """
-echo "{{
-{params.json_wildcards}\\"bench\\": {{
-{params.json_bench}
-}}
-}}" > {output.json}
-        """
+    params:
+        config = lambda wildcards: {"tool": wildcards.tool,
+                                    "version": wildcards.vers,
+                                    "database": wildcards.dtbs,
+                                    "arguments": str2args(wildcards.args),
+                                    "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}
+    run:
+        json_write(json_benchmark(input.bench, mode="build", category="benchmark", config=params.config), output.json)
 
 rule size:
     input:
@@ -50,22 +43,20 @@ rule size:
     output:
         json = "{tool}/{vers}/{dtbs}/{args}.build.size.json"
     params:
-        json_wildcards = lambda wildcards: json_wildcards({"tool": wildcards.tool,
-                                                           "version": wildcards.vers,
-                                                           "database": wildcards.dtbs,
-                                                           "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"]),
-                                                           "arguments": str2args(wildcards.args)})
-    shell: 
-        """
-        # index size bytes
-        file_size_bytes=$(awk -F "\\t" '{{print "    \\"" $2 "\\": " $1 ","}}' {input.fsize})
-        total_size_bytes=$(awk -F "\\t" '{{s+=$1}}END{{print s}}' {input.fsize})
-
-echo "{{
-{params.json_wildcards}\\"size\\":
-{{
-${{file_size_bytes}}
-    \\"total_size_bytes\\": ${{total_size_bytes}}
-}}
-}}" > {output.json}
-        """
+        config = lambda wildcards: {"tool": wildcards.tool,
+                                    "version": wildcards.vers,
+                                    "database": wildcards.dtbs,
+                                    "arguments": str2args(wildcards.args),
+                                    "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}
+    run:
+        out_json = json_default(mode="build", category="size", config=params.config)
+        out_json["metrics"]["size_bytes"] = {}
+        out_json["metrics"]["size_bytes"]["total"] = 0
+        out_json["metrics"]["size_bytes"]["files"] = {}
+        with open(input.fsize, "r") as file:
+            for line in file:
+                s, f = line.rstrip().split("\t")
+                out_json["metrics"]["size_bytes"]["total"] += int(s)
+                out_json["metrics"]["size_bytes"]["files"][f] = int(s)
+        json_write(out_json, output.json)
+        

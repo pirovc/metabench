@@ -1,5 +1,8 @@
 from itertools import product
 import numpy as np
+import datetime
+import json
+
 
 def join_args(args):
     return "_".join(args)
@@ -45,41 +48,60 @@ def args_product(config_args_dict):
     return prod_args
 
 
-def json_wildcards(wdict):
-    json_str = ""
-    for p, v in wdict.items():
-        json_str += '\\"' + p + '\\": \\"' + v + '\\",\n'
-    return json_str
+def json_load(json_file):
+    with open(json_file, "r") as file:
+        return json.load(file)
 
 
-def json_bench(bench_file):
-    json_str = ""
+def json_write(j, json_file):
+    with open(json_file, "w") as file:
+        json.dump(j, file, indent=4)
+
+
+def json_default(mode: str = "", category: str = "", config: dict = {}):
+    j = {}
+    j["mode"] = mode
+    j["category"] = category
+    j["created"] = datetime.datetime.now().isoformat()
+    j["config"] = config
+    j["metrics"] = {}
+    return j
+
+
+def json_benchmark(bench_file, mode: str = "", category: str = "", config: dict = {}):
+    out_json = json_default(mode=mode, category=category, config=config)
+    out_json["config"] = config
+
+    # Parse benchmark file and select fastest if more then one run
     with open(bench_file, "r") as file:
         next(file)  # skip first line with header
-
         bench_values = []
         for line in file:
             fields = line.rstrip().split("\t")
             bench_values.append(fields)
 
     selected_fields = bench_select(bench_values)
+    out_json["metrics"]["benchmark"] = {}
+    out_json["metrics"]["benchmark"]["repeats"] = len(bench_values)
+    out_json["metrics"]["benchmark"]["cpu_time_seconds"] = float(
+        selected_fields[0])
+    out_json["metrics"]["benchmark"]["wall_clock_time"] = selected_fields[1]
+    out_json["metrics"]["benchmark"]["mem_rss_mb"] = float(selected_fields[2])
+    out_json["metrics"]["benchmark"]["mem_vms_mb"] = float(selected_fields[3])
+    out_json["metrics"]["benchmark"]["mem_uss_mb"] = float(selected_fields[4])
+    out_json["metrics"]["benchmark"]["mem_pss_mb"] = float(selected_fields[5])
+    out_json["metrics"]["benchmark"]["io_in_bytes"] = float(selected_fields[6])
+    out_json["metrics"]["benchmark"]["io_out_bytes"] = float(
+        selected_fields[7])
+    out_json["metrics"]["benchmark"]["mean_cpu_load"] = float(
+        selected_fields[8])
+    out_json["metrics"]["benchmark"]["cpu_load"] = float(selected_fields[9])
+    return out_json
 
-    json_str += '    \\"cpu_time_seconds\\": ' + selected_fields[0] + ',\n'
-    json_str += '    \\"wall_clock_time\\": \\"' + selected_fields[1] + '\\",\n'
-    json_str += '    \\"mem_rss_mb\\": ' + selected_fields[2] + ',\n'
-    json_str += '    \\"mem_vms_mb\\": ' + selected_fields[3] + ',\n'
-    json_str += '    \\"mem_uss_mb\\": ' + selected_fields[4] + ',\n'
-    json_str += '    \\"mem_pss_mb\\": ' + selected_fields[5] + ',\n'
-    json_str += '    \\"io_in_bytes\\": ' + selected_fields[6] + ',\n'
-    json_str += '    \\"io_out_bytes\\": ' + selected_fields[7] + ',\n'
-    json_str += '    \\"mean_cpu_load\\": ' + selected_fields[8] + ',\n'
-    json_str += '    \\"cpu_load\\": ' + selected_fields[9]
-
-    return json_str
 
 def bench_select(bench_values):
     # No repetition
-    if len(bench_values)==1:
+    if len(bench_values) == 1:
         return bench_values[0]
     else:
         # return min time
@@ -87,8 +109,9 @@ def bench_select(bench_values):
         min_idx = cpu_time_seconds.index(min(cpu_time_seconds))
         return bench_values[min_idx]
 
+
 def header_bioboxes_classify(tool, wildcards):
-    #https://github.com/bioboxes/rfc/blob/master/data-format/binning.mkd
+    # https://github.com/bioboxes/rfc/blob/master/data-format/binning.mkd
     header = ""
     header += "@Version:0.10.0\n"
     header += "@SampleID: " + tool + " " + " ".join(wildcards) + "\n"
@@ -97,7 +120,7 @@ def header_bioboxes_classify(tool, wildcards):
 
 
 def header_bioboxes_profile(tool, ranks, taxonomy_files, wildcards):
-    #https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd
+    # https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd
     header = ""
     header += "@Version:0.10.0\n"
     header += "@SampleID: " + tool + " " + " ".join(wildcards) + "\n"
