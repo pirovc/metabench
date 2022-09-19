@@ -30,14 +30,14 @@ rule bracken_build_size:
         "du --block-size=1 --dereference {input} > {output}"  # output in bytes
 
 
-rule bracken_profile:
+rule bracken_profiling:
     input:
         rep = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"
     output:
         bra = temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.bracken"),
         out = temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.out")
     log:
-        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.log"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.log"
     conda:
         srcdir("../envs/bracken.yaml")
     params:
@@ -47,22 +47,22 @@ rule bracken_profile:
         bracken -d {params.dbprefix} -i {input.rep} -o {output.out} -w {output.bra} > {log} 2>&1
         """
 
-rule bracken_profile_format:
+rule bracken_profiling_format:
     input:
         bra = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.bracken"
     output:
-        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes"
+        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bioboxes"
     log:
-        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes.log"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bioboxes.log"
     conda:
         srcdir("../envs/evals.yaml")
     params:
         scripts_path = srcdir("../scripts/"),
-        ranks = lambda wildcards: " ".join(config["profile_ranks"]),
+        ranks = lambda wildcards: " ".join(config["ranks_profiling"]),
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
-        header = lambda wildcards: header_bioboxes_profile("kraken2",
-                                                           config["profile_ranks"],
+        header = lambda wildcards: header_bioboxes_profiling("kraken2",
+                                                           config["ranks_profiling"],
                                                            [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
                                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
                                                            wildcards),

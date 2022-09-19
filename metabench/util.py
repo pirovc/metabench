@@ -110,7 +110,7 @@ def bench_select(bench_values):
         return bench_values[min_idx]
 
 
-def header_bioboxes_classify(tool, wildcards):
+def header_bioboxes_binning(tool, wildcards):
     # https://github.com/bioboxes/rfc/blob/master/data-format/binning.mkd
     header = ""
     header += "@Version:0.10.0\n"
@@ -119,7 +119,7 @@ def header_bioboxes_classify(tool, wildcards):
     return header
 
 
-def header_bioboxes_profile(tool, ranks, taxonomy_files, wildcards):
+def header_bioboxes_profiling(tool, ranks, taxonomy_files, wildcards):
     # https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd
     header = ""
     header += "@Version:0.10.0\n"

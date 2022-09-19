@@ -51,9 +51,9 @@ rule ganon_classify:
         rep=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"),
         tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.tre")
     benchmark:
-        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv", config["repeat"])
+        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bench.tsv", config["repeat"])
     log:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.log"
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.log"
     threads:
         config["threads"]
     conda:
@@ -95,9 +95,9 @@ rule ganon_classify_format:
         lca="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.lca",
         dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
     output:
-        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
+        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bioboxes"
     params:
-        header = lambda wildcards: header_bioboxes_classify("ganon", wildcards)
+        header = lambda wildcards: header_bioboxes_binning("ganon", wildcards)
     shell:
         """
         # bioboxes header
@@ -113,21 +113,21 @@ rule ganon_classify_format:
         -t$'\\t' -o "1.1,1.2,2.2" >> {output.bioboxes}
         """
 
-rule ganon_profile_format:
+rule ganon_profiling_format:
     input:
         tre = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.tre"
     output:
-        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes"
+        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bioboxes"
     log:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profile.bioboxes.log"
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bioboxes.log"
     conda:
         srcdir("../envs/evals.yaml")
     params:
         scripts_path = srcdir("../scripts/"),
-        ranks = lambda wildcards: " ".join(config["profile_ranks"]),
+        ranks = lambda wildcards: " ".join(config["ranks_profiling"]),
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"],
-        header = lambda wildcards: header_bioboxes_profile("ganon",
-                                                           config["profile_ranks"],
+        header = lambda wildcards: header_bioboxes_profiling("ganon",
+                                                           config["ranks_profiling"],
                                                            [os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"],
                                                            wildcards),
     shell: 

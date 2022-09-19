@@ -5,7 +5,7 @@ include: "../tools/ganon.smk"
 include: "../tools/kraken2.smk"
 
 
-def input_classify():
+def input_all():
     out = []
     for tool in config["tools"]:
         if tool in config["run"]:
@@ -25,13 +25,13 @@ def input_classify():
 
 rule all:
     input:
-        classify = expand("{i}.{ext}", i=input_classify(), ext=["classify.bioboxes", "classify.bench.json", "profile.bioboxes"])
+        expand("{i}.{ext}", i=input_all(), ext=["binning.bioboxes", "binning.bench.json", "profiling.bioboxes"])
 
 rule bench:
     input:
-        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv"
+        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bench.tsv"
     output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.json"
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bench.json"
     params:
         config = lambda wildcards: {"tool": wildcards.tool,
                                     "version": wildcards.vers,
@@ -40,4 +40,4 @@ rule bench:
                                     "arguments": str2args(wildcards.args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, mode="classify", category="benchmark", config = params.config), output.json)
+        json_write(json_benchmark(input.bench, mode="binning", category="benchmark", config = params.config), output.json)

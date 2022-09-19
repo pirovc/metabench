@@ -41,7 +41,7 @@ run:
       fixed_args:
       args:
 
-profile_ranks:
+ranks_profiling:
   - superkingdom
   - phylum
   - class

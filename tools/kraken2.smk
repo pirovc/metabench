@@ -54,9 +54,9 @@ rule kraken2_classify:
         res=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res"),
         rep=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep")
     benchmark:
-        repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bench.tsv", config["repeat"])
+        repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bench.tsv", config["repeat"])
     log:
-        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.log"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.log"
     threads:
         config["threads"]
     conda:
@@ -95,10 +95,10 @@ rule kraken2_classify_format:
     input:
         res = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res",
     output:
-        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.classify.bioboxes"
+        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bioboxes"
     params:
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
-        header = lambda wildcards: header_bioboxes_classify("kraken2", wildcards)
+        header = lambda wildcards: header_bioboxes_binning("kraken2", wildcards)
     shell:
         """
         # bioboxes header
@@ -115,5 +115,4 @@ rule kraken2_classify_format:
         """
 
 # running with bracken
-#
-# rule kraken2_profile_format:
+# rule kraken2_profiling_format:
