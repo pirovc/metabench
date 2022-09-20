@@ -40,4 +40,4 @@ rule bench:
                                     "arguments": str2args(wildcards.args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, mode="binning", category="benchmark", config = params.config), output.json)
+        json_write(json_benchmark(input.bench, report="binning", category="benchmark", config = params.config), output.json)

@@ -35,7 +35,7 @@ rule bench:
                                     "arguments": str2args(wildcards.args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, mode="build", category="benchmark", config=params.config), output.json)
+        json_write(json_benchmark(input.bench, report="build", category="benchmark", config=params.config), output.json)
 
 rule size:
     input:
@@ -49,14 +49,13 @@ rule size:
                                     "arguments": str2args(wildcards.args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}
     run:
-        out_json = json_default(mode="build", category="size", config=params.config)
-        out_json["metrics"]["size_bytes"] = {}
-        out_json["metrics"]["size_bytes"]["total"] = 0
-        out_json["metrics"]["size_bytes"]["files"] = {}
+        out_json = json_default(report="build", category="size", config=params.config)
+        out_json["metrics"]["total_size_bytes"] = 0
+        out_json["metrics"]["files_size_bytes"] = {}
         with open(input.fsize, "r") as file:
             for line in file:
                 s, f = line.rstrip().split("\t")
-                out_json["metrics"]["size_bytes"]["total"] += int(s)
-                out_json["metrics"]["size_bytes"]["files"][f] = int(s)
+                out_json["metrics"]["total_size_bytes"] += int(s)
+                out_json["metrics"]["files_size_bytes"][f] = int(s)
         json_write(out_json, output.json)
         

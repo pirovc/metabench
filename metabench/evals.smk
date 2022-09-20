@@ -36,7 +36,7 @@ rule stats_profiling:
                                     "database_arguments": str2args(wildcards.dtbs_args),
                                     "arguments": str2args(wildcards.args)}
     run:
-        out_json = json_default(mode="profiling", category="stats", config=params.config)
+        out_json = json_default(report="profiling", category="stats", config=params.config)
         out_json["metrics"]["total_classified"] = {}
         out_json["metrics"]["total_classified"]["ranks"] = defaultdict(float)
         with open(input.bioboxes, "r") as file:
@@ -84,7 +84,7 @@ rule stats_binning:
                                     "database_arguments": str2args(wildcards.dtbs_args),
                                     "arguments": str2args(wildcards.args)}
     run:
-        out_json = json_default(mode="binning", category="stats", config=params.config)
+        out_json = json_default(report="binning", category="stats", config=params.config)
         out_json["metrics"] = json_load(input.json_tmp)
         json_write(out_json, output.json)
 
@@ -131,7 +131,7 @@ rule evals_binning:
                                     "database_arguments": str2args(wildcards.dtbs_args),
                                     "arguments": str2args(wildcards.args)}
     run:
-        out_json = json_default(mode="binning", category="evals", config=params.config)
+        out_json = json_default(report="binning", category="evals", config=params.config)
         out_json["metrics"] = {}
         out_json["metrics"]["cumulative-based"] = json_load(input.cumu_json)
         out_json["metrics"]["rank-based"] = json_load(input.rank_json)
@@ -179,7 +179,7 @@ rule evals_profiling:
                                     "database_arguments": str2args(wildcards.dtbs_args),
                                     "arguments": str2args(wildcards.args)}
     run:
-        out_json = json_default(mode="profiling", category="evals", config=params.config)
+        out_json = json_default(report="profiling", category="evals", config=params.config)
         out_json["metrics"] = json_load(input.json_tmp)
         json_write(out_json, output.json)
 

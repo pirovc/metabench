@@ -32,9 +32,9 @@ def main():
     fixed_ranks = ["root"] + args.ranks if args.ranks else default_ranks
 
     # Generate results dict
-    res = {"reads_invalid_tax": 0,
-           "reads_classified": { 
-             "total":0,
+    res = {"total_reads_invalid_tax": 0,
+           "total_reads_classified": 0,
+           "reads_classified": {
              "ranks": {r:0 for r in fixed_ranks}}
            }
 
@@ -48,20 +48,21 @@ def main():
         taxid = tax.latest(fields[2])
 
         if taxid == tax.undefined_node:
-            res["reads_invalid_tax"] += 1
+            res["total_reads_invalid_tax"] += 1
             sys.stderr.write(fields[2] + " not found in taxonomy\n")
             continue
         else:
             closest_taxid = tax.closest_parent(taxid, fixed_ranks)
             if closest_taxid == tax.undefined_node:
-                res["reads_invalid_tax"] += 1
+                res["total_reads_invalid_tax"] += 1
                 sys.stderr.write(taxid + " without valid rank\n")
                 continue
 
+            res["total_reads_classified"] += 1
             # account for rank
             rank = tax.rank(closest_taxid)
             res["reads_classified"]["ranks"][rank] += 1
-            res["reads_classified"]["total"] += 1
+            
 
     if args.output_file:
         with open(args.output_file, "w") as outfile:
