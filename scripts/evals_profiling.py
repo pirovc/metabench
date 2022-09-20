@@ -136,7 +136,7 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
         l2_ranks = defaultdict(float)
         
         threshold_key = "threshold>=" + str(threshold)
-        final_stats[threshold_key] = {f: {"ranks": defaultdict()} for f in fields}
+        final_stats[threshold_key] = {f: defaultdict() for f in fields}
 
         res_thr = {}
         for rank in fixed_ranks:
@@ -194,28 +194,28 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
                   sep="\t", file=sys.stderr)
         
             if output_json:
-                final_stats[threshold_key]["db"]["ranks"][fr] = db_ranks[fr]
-                final_stats[threshold_key]["gt"]["ranks"][fr] = len(gt[fr])
-                final_stats[threshold_key]["classified"]["ranks"][fr] = total_classified_rank
-                final_stats[threshold_key]["tp"]["ranks"][fr] = tp
-                final_stats[threshold_key]["fp"]["ranks"][fr] = fp
-                final_stats[threshold_key]["fn"]["ranks"][fr] = fn
-                final_stats[threshold_key]["sensitivity_max_db"]["ranks"][fr] = sens
-                final_stats[threshold_key]["sensitivity"]["ranks"][fr] = sens
-                final_stats[threshold_key]["precision"]["ranks"][fr] = prec
-                final_stats[threshold_key]["f1_score"]["ranks"][fr] = f1s
-                final_stats[threshold_key]["l1n"]["ranks"][fr] = l1_ranks[fr]
-                final_stats[threshold_key]["l2n"]["ranks"][fr] = l2_ranks[fr]
+                final_stats[threshold_key]["db"][fr] = db_ranks[fr]
+                final_stats[threshold_key]["gt"][fr] = len(gt[fr])
+                final_stats[threshold_key]["classified"][fr] = total_classified_rank
+                final_stats[threshold_key]["tp"][fr] = tp
+                final_stats[threshold_key]["fp"][fr] = fp
+                final_stats[threshold_key]["fn"][fr] = fn
+                final_stats[threshold_key]["sensitivity_max_db"][fr] = sens
+                final_stats[threshold_key]["sensitivity"][fr] = sens
+                final_stats[threshold_key]["precision"][fr] = prec
+                final_stats[threshold_key]["f1_score"][fr] = f1s
+                final_stats[threshold_key]["l1n"][fr] = l1_ranks[fr]
+                final_stats[threshold_key]["l2n"][fr] = l2_ranks[fr]
 
             y[fr].append(prec)
             x[fr].append(sens)
 
-    final_stats["summary"] = {"aupr": {"ranks": defaultdict()}}
+    final_stats["summary"] = {"aupr": defaultdict()}
     for fr in fixed_ranks[::-1]:
         # add limits to calculate proper aupr
         aupr = np.trapz([1] + y[fr] + [0], x=[0] + x[fr] + [1])
         print("aupr", fr, aupr, sep="\t", file=sys.stderr)
-        final_stats["summary"]["aupr"]["ranks"][fr] = aupr
+        final_stats["summary"]["aupr"][fr] = aupr
 
     if output_json:
         json.dump(final_stats, output_json, indent=4)

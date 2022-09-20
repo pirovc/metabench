@@ -37,15 +37,14 @@ rule stats_profiling:
                                     "arguments": str2args(wildcards.args)}
     run:
         out_json = json_default(report="profiling", category="stats", config=params.config)
-        out_json["metrics"]["total_classified"] = {}
-        out_json["metrics"]["total_classified"]["ranks"] = defaultdict(float)
+        out_json["metrics"]["total_classified"] = defaultdict(float)
         with open(input.bioboxes, "r") as file:
             for line in file:
                 if line[0] == "@":
                     continue
                 fields = line.rstrip().split("\t")
                 # sum percentage of classification for each rank
-                out_json["metrics"]["total_classified"]["ranks"][fields[1]] += float(fields[4])
+                out_json["metrics"]["total_classified"][fields[1]] += float(fields[4])
         json_write(out_json, output.json)
 
 rule stats_binning_script:

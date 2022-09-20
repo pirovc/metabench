@@ -34,9 +34,7 @@ def main():
     # Generate results dict
     res = {"total_reads_invalid_tax": 0,
            "total_reads_classified": 0,
-           "reads_classified": {
-             "ranks": {r:0 for r in fixed_ranks}}
-           }
+           "reads_classified": {r:0 for r in fixed_ranks}}
 
     # bioboxes:
     # headers start with @
@@ -61,7 +59,7 @@ def main():
             res["total_reads_classified"] += 1
             # account for rank
             rank = tax.rank(closest_taxid)
-            res["reads_classified"]["ranks"][rank] += 1
+            res["reads_classified"][rank] += 1
             
 
     if args.output_file:

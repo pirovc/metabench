@@ -51,11 +51,9 @@ rule size:
     run:
         out_json = json_default(report="build", category="size", config=params.config)
         out_json["metrics"]["total_size_bytes"] = 0
-        out_json["metrics"]["files_size_bytes"] = {}
         with open(input.fsize, "r") as file:
             for line in file:
                 s, f = line.rstrip().split("\t")
                 out_json["metrics"]["total_size_bytes"] += int(s)
-                out_json["metrics"]["files_size_bytes"][f] = int(s)
         json_write(out_json, output.json)
         
