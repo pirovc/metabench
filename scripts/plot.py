@@ -10,12 +10,13 @@ import pandas as pd
 # Bokeh
 from bokeh.io import save
 from bokeh.plotting import figure, output_file
-from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS
+from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform, FactorRange, MultiSelect
+
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.models.filters import GroupFilter, IndexFilter
 from bokeh.palettes import Category10, Category20, Colorblind, linear_palette, Turbo256
     
-from bokeh.transform import linear_cmap    
+from bokeh.transform import linear_cmap, transform   
 from bokeh.layouts import column, row
 
 
@@ -79,31 +80,40 @@ def main():
     #             print(tables[t][c][e])
 
 
-    table = tables["binning"]["evals"]["config"]
+    table = tables["profiling"]["evals"]["config"]
+    table["version"] = table["version"] + " (" + table["tool"] + ")"
+
     cols = [TableColumn(field=field, title=field) for field in table.columns]
     cds_table = ColumnDataSource(table)
-    #cds_table.selected.indices = list(range(len(cds_table.data["index"])))
     data_table = DataTable(source=cds_table, columns=cols, selectable="checkbox")
 
-    s = pd.DataFrame(tables["binning"]["evals"]["metrics"].stack().reset_index().set_index("metric"))
-    s.rename(columns = {'level_2':'tool', 0:'value'}, inplace=True)
-          
+    s = pd.DataFrame(tables["profiling"]["evals"]["metrics"].stack().reset_index().set_index("metric"))
+    s.rename(columns = {'level_2':'config', 0:'value'}, inplace=True)
+    s.sort_values(by=['metric', 'rank', 'config'], inplace=True)
+
     print(s)
     cds = ColumnDataSource(s)
 
 
+
+    metrics = []
+    for metric in set(cds.data["metric"]):
+        v = metric.split("|")
+        metrics.append((metric, v[1] + " (" + v[0] + ")"))
+    metrics.sort(key=lambda a: a[1])
+
+    ########################################### p1
     p = figure(title="ranks", x_range=default_ranks)
-    
     config_filter = IndexFilter(indices=[])
     metric_filter = GroupFilter(column_name='metric', group="rank-based|f1_score")
     cds_view = CDSView(source=cds, filters=[metric_filter, config_filter])
     p.scatter(x="rank", y="value", 
-        legend_group="tool",
+        legend_field="config",
         source=cds,
         view=cds_view,
-        color=linear_cmap(field_name="tool", palette=make_color_palette(len(set(cds.data["tool"]))), low=0, high=len(set(cds.data["tool"]))))
+        color=linear_cmap(field_name="config", palette=make_color_palette(len(set(cds.data["config"]))), low=0, high=len(set(cds.data["config"]))))
 
-    metric_select = Select(title="Metric:", value="rank-based|f1_score", options=sorted(list(set(cds.data["metric"]))))
+    metric_select = Select(title="Metric:", value="", options=metrics)
 
     callback_metrics = CustomJS(
         args=dict(cds=cds, metric_filter=metric_filter),
@@ -111,29 +121,172 @@ def main():
         metric_filter.group = this.value;
         cds.change.emit();
         ''')
-
     metric_select.js_on_change('value', callback_metrics)
     
-
-
-        
     callback_metrics = CustomJS(
         args=dict(cds=cds,config_filter=config_filter),
         code='''
         const indices = [];
         for(let i = 0; i < cds.length; i++){
-            if(this.indices.indexOf(cds.data["tool"][i]) > -1){
+            if(this.indices.indexOf(cds.data["config"][i]) > -1){
                 indices.push(i);
             }
         }
-        console.log(indices);
         config_filter.indices = indices;
         cds.change.emit();
         ''') 
     cds_table.selected.js_on_change('indices', callback_metrics)
 
 
-    layout = column([data_table,metric_select, p])
+
+    ########################################### p2
+    rank_filter = GroupFilter(column_name='rank', group="species")
+    metric1_select = Select(title="Metric:", value="", options=metrics)
+    metric2_select = Select(title="Metric:", value="", options=metrics)
+    rank_select = Select(title="Rank:", value="species", options=default_ranks)
+    callback_rank = CustomJS(
+        args=dict(cds=cds, rank_filter=rank_filter),
+        code='''
+        rank_filter.group = this.value;
+        cds.change.emit();
+        ''')
+    rank_select.js_on_change('value', callback_rank)
+
+
+    v_func = """
+        var shift = 0;
+        for (let i = 0; i < xs.length; i++) {
+            if(xs[i]==metric2_select.value){
+                shift=i;
+                break;
+            }
+        }
+
+        const y = new Float64Array(xs.length);
+        var x = 0;
+        for (let i = 0; i < xs.length; i++) {
+            if(xs[i]==metric1_select.value){
+                y[i] = cds.data["value"][shift+x];
+                x++;
+            }else{
+                y[i] = -1;
+            }
+        }
+
+        return y;
+    """
+    normalize = CustomJSTransform(args=dict(cds=cds, rank_select=rank_select, metric1_select=metric1_select, metric2_select=metric2_select), v_func=v_func)
+
+    metric1_filter = GroupFilter(column_name='metric', group="rank-based|f1_score")
+    cds_view2 = CDSView(source=cds, filters=[rank_filter, metric1_filter, config_filter])
+    p2 = figure(title="compare")
+    p2.scatter(x="value", y=transform('metric', normalize), 
+        legend_field="config",
+        source=cds,
+        view=cds_view2,
+        color=linear_cmap(field_name="config", palette=make_color_palette(len(set(cds.data["config"]))), low=0, high=len(set(cds.data["config"]))))
+
+    callback_metrics1 = CustomJS(
+        args=dict(cds=cds, metric1_filter=metric1_filter),
+        code='''
+        metric1_filter.group = this.value;
+        cds.change.emit();
+        ''')
+    metric1_select.js_on_change('value', callback_metrics1)
+
+    callback_metrics2 = CustomJS(
+        args=dict(cds=cds),
+        code='''
+        cds.change.emit();
+        ''')
+    metric2_select.js_on_change('value', callback_metrics2)
+
+ 
+
+
+
+
+
+    ########################################### p3
+    p3 = figure(title="group", x_range=FactorRange(factors=list(map(str,cds_table.data["index"]))))
+
+    rank_filter_group = GroupFilter(column_name='rank', group="species")
+    metric_filter_group = GroupFilter(column_name='metric', group="rank-based|f1_score")
+    cds_view_group = CDSView(source=cds, filters=[rank_filter_group, metric_filter_group, config_filter])
+
+    metric_select_group = Select(title="Metric:", value="rank-based|f1_score", options=metrics)
+    rank_select_group = Select(title="Rank:", value="species", options=default_ranks)
+    group_multi_select = MultiSelect(value=[], options=table.columns.to_list())
+
+    group_x = CustomJSTransform(
+        args=dict(cds=cds, cds_table=cds_table, group_multi_select=group_multi_select), 
+        v_func="""
+        if(group_multi_select.value.length>0){
+            const y = new Array(xs.length);
+            for (let i = 0; i < xs.length; i++) {
+                var group = "|";
+                for(let v = 0; v < group_multi_select.value.length; v++){
+                    group += cds_table.data[group_multi_select.value[v]][xs[i]] + "|"
+                }
+                y[i] = group;
+            }
+            return y;
+        }else{
+            return xs;
+        }
+    """)
+
+
+    p3.scatter(x=transform('config', group_x), y="value", 
+        legend_field="config",
+        source=cds,
+        view=cds_view_group,
+        color=linear_cmap(field_name="config", palette=make_color_palette(len(set(cds.data["config"]))), low=0, high=len(set(cds.data["config"]))))
+
+
+    callback_rank_group = CustomJS(
+        args=dict(cds=cds, rank_filter_group=rank_filter_group),
+        code='''
+        rank_filter_group.group = this.value;
+        cds.change.emit();
+        ''')
+    rank_select_group.js_on_change('value', callback_rank_group)
+
+    callback_metric_group = CustomJS(
+        args=dict(cds=cds, metric_filter_group=metric_filter_group),
+        code='''
+        metric_filter_group.group = this.value;
+        cds.change.emit();
+        ''')
+    metric_select_group.js_on_change('value', callback_metric_group)
+
+
+    callback_group = CustomJS(
+        args=dict(cds=cds, cds_table=cds_table, p3=p3),
+        code='''
+        var factors = new Set();
+
+        console.log(cds_table.data["index"]);
+        console.log(cds_table.selected.indices);
+        for(let i = 0; i < cds_table.selected.indices.length; i++){
+            var group = "|";
+            for(let v = 0; v < this.value.length; v++){
+                group += cds_table.data[this.value[v]][cds_table.selected.indices[i]] + "|"
+            }
+            factors.add(group);
+        }
+        var sorted_factors = [...factors].sort();
+        p3.x_range.factors = sorted_factors;
+        ''')
+    group_multi_select.js_on_change('value', callback_group)
+
+    layout = column([data_table, 
+                    row([
+                        column([p, metric_select]),
+                        column([p2, rank_select, metric1_select, metric2_select]),
+                        column([p3, rank_select_group, metric_select_group, group_multi_select])]
+                        )
+                    ])
     output_file(args.output, title="Metabench", mode="inline")
     save(layout)
 

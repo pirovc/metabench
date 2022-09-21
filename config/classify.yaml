@@ -33,6 +33,7 @@ run:
       fixed_args:
         "--ganon-path": "/home/pirov/code/ganon/"
       args:
+        "--rel-cutoff": [0.1, 0.5, 0.1]
         
   kraken2:
     "2.1.2":
