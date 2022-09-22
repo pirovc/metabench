@@ -6,3 +6,4 @@ dependencies:
  - multitax=1.2.0
  - pylca=1.0.0
  - numpy
+ - pandas  # temp

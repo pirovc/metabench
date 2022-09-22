@@ -57,7 +57,8 @@ rule ganon_classify:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/ganon.yaml")
+        #srcdir("../envs/ganon.yaml")
+        srcdir("../envs/evals.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}", 
