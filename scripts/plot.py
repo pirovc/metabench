@@ -14,7 +14,7 @@ import pandas as pd
 from bokeh.io import save
 from bokeh.core.enums import MarkerType
 from bokeh.plotting import figure, output_file
-from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform, FactorRange, MultiSelect, CustomJSHover, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup
+from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform, FactorRange, MultiSelect, CustomJSHover, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, Spacer
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.models.filters import GroupFilter, IndexFilter
 from bokeh.palettes import Category10, Category20, Colorblind, linear_palette, Turbo256
@@ -92,6 +92,10 @@ def main():
         binning_tabs.append(Panel(child=plot_evals(
             "binning", tables, default_ranks), title="Evaluations"))
 
+    if not tables["profiling"]["stats"]["config"].empty:
+            profiling_tabs.append(Panel(child=plot_stats(
+                "profiling", tables, default_ranks), title="Stats"))
+
     if profiling_tabs:
         main_tabs.append(
             Panel(child=Tabs(tabs=profiling_tabs), title="Profiling"))
@@ -105,30 +109,77 @@ def main():
 
     return True
 
+def plot_stats(report, tables, default_ranks):
+
+    df_config = parse_df_config(tables[report]["stats"]["config"])
+    cds_config = ColumnDataSource(df_config)
+
+    df_stats = parse_df_data(tables[report]["stats"]["metrics"])
+    cds_stats = ColumnDataSource(df_stats)
+
+    print(df_config)
+    print(df_stats)
+
+    #
+    # DataTable
+    #
+    table_config, filter_config, widgets_config = plot_datatable(cds_config, df_config, cds_stats)
+
+
+    # #
+    # # Stats
+    # #
+    # plot_stats = figure(title="Stats",
+    #                     x_range=FactorRange(
+    #                          factors=cds_config.data["name"]),
+    #                     y_range=Range1d(start=0, end=100)
+
+    # # Change values on x-axis based on selected configuration groups
+    # name_x = CustomJSTransform(
+    #     args=dict(cds_config=cds_config),
+    #     v_func="""
+    #     const y = new Array(xs.length);
+    #     for (let i = 0; i < xs.length; i++) {
+    #         y[i] = cds_config.data["name"][xs[i]];
+    #     }
+    #     return y;
+    # """)
+
+    # plot_stats.scatter(default_ranks, x=transform("config", name_x),
+    #                       source=cds_stats,
+    #                       width=1,
+    #                       #line_color=None,  # to avoid printing small border for zeros
+    #                       #color=make_color_palette(top_obs_bars, linear=True) + ("#868b8e", "#eeede7"))
+    #                       color=make_color_palette(len(default_ranks)))
+
+
+    # plot_groups.scatter(x=transform("config", name_x), y="value",
+    #                     source=cds_evals,
+    #                     view=view_groups,
+    #                     size=12,
+    #                     marker=transform("config", CustomJSTransform(
+    #                         args=dict(e=smarkers), v_func="return xs.map(function(x) { return e[x]; });")),
+    #                     fill_color=transform("config", CustomJSTransform(args=dict(
+    #                         e=sfillcolor), v_func="return xs.map(function(x) { return e[x]; });")),
+    #                     line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
+
+    layout = column([row(table_config, column(*widgets_config)),
+                     row(Spacer())
+                     ])
+
+
+    return layout
 
 def plot_evals(report, tables, default_ranks):
 
-    # Main dataframes and cds
-    df_config = tables[report]["evals"]["config"]
-    # Add toll name to version (in case of same version number among tools)
-    df_config["version"] = df_config["version"] + \
-        " (" + df_config["tool"] + ")"
-    # Create random names for each configuration
-    df_config["name"] = [randomname.get_name()
-                         for i in range(df_config.shape[0])]
+    df_config = parse_df_config(tables[report]["evals"]["config"])
     cds_config = ColumnDataSource(df_config)
 
-    # Stack metrics and reset index
-    df_evals = pd.DataFrame(
-        tables[report]["evals"]["metrics"].stack().reset_index().set_index("metric"))
-    # Rename column headers
-    df_evals.rename(columns={'level_2': "config", 0: 'value'}, inplace=True)
-    # Make sure is sorted to properly use some js methods
-    df_evals.sort_values(by=["metric", 'rank', "config"], inplace=True)
+    df_evals = parse_df_data(tables[report]["evals"]["metrics"])
     cds_evals = ColumnDataSource(df_evals)
 
-    print(df_config)
-    print(df_evals)
+    #print(df_config)
+    #print(df_evals)
 
     # General variables
     tools = "pan,wheel_zoom,box_zoom,box_select,tap,reset,save"
@@ -158,7 +209,9 @@ def plot_evals(report, tables, default_ranks):
         tooltips=[("Tool", "@config{tool}"),
                   ("Version", "@config{version}"),
                   ("Sample", "@config{sample}"),
-                  ("Database", "@config{database}"),
+                  ("DB", "@config{database}"),
+                  ("DB Args.", "@config{database_arguments}"),
+                  ("Args. ", "@config{arguments}"),
                   ("Name", "@config{name}")],
         formatters={"@config": CustomJSHover(args=dict(
             cds_config=cds_config), code="return cds_config.data[format][value]")}
@@ -167,50 +220,7 @@ def plot_evals(report, tables, default_ranks):
     #
     # DataTable
     #
-    table_config = DataTable(source=cds_config,
-                             columns=[TableColumn(field=field, title=field)
-                                      for field in df_config.columns],
-                             selectable="checkbox",
-                             width=1200,
-                             height=300)
-
-    choices = []
-    for h in df_config.columns:
-        for u in df_config[h].unique():
-            if u:
-                choices.append((h+"|"+u, u + " [" + h + "]"))
-
-    multichoice_config = MultiChoice(title="Select", options=choices)
-    radiobutton_config = RadioButtonGroup(labels=["AND", "OR"], active=0)
-    button_config = Button(label="Apply", button_type="default")
-
-    filter_config = IndexFilter(indices=[])
-
-    cb_button_config = CustomJS(
-        args=dict(cds_config=cds_config,
-                  multichoice_config=multichoice_config,
-                  radiobutton_config=radiobutton_config),
-        code="""
-        var selected_indices = [];
-        for (var i = 0; i < cds_config.length; i++) {
-
-            if (multichoice_config.value.length > 0 ){
-                var found = 0;
-                for (var m=0; m < multichoice_config.value.length; ++m){
-                    const val = multichoice_config.value[m].split("|");
-                    if(cds_config.data[val[0]][i]==val[1]){
-                        found++;
-                    }
-                }
-                if (found==0 || (radiobutton_config.active==0 && found<multichoice_config.value.length)) {
-                    continue;
-                }
-            }
-            selected_indices.push(i);
-        }
-        cds_config.selected.indices = selected_indices;
-        """)
-    button_config.js_on_click(cb_button_config)
+    table_config, filter_config, widgets_config = plot_datatable(cds_config, df_config, cds_evals)
 
     #
     # Plot Ranks
@@ -355,7 +365,7 @@ def plot_evals(report, tables, default_ranks):
     #
     plot_groups = figure(title="Groups",
                          x_range=FactorRange(
-                             factors=list(map(str, cds_config.data["name"]))),
+                             factors=list(cds_config.data["name"])),
                          toolbar_location="above",
                          tools=tools)
 
@@ -440,26 +450,11 @@ def plot_evals(report, tables, default_ranks):
         plot_groups.x_range.factors = sorted_factors;
         """)
     multiselect_groups.js_on_change('value', cb_multiselect_groups)
+    # trigger changes on checkboxes table
+    cds_config.selected.js_on_change('indices', cb_multiselect_groups)
 
-    #
-    # General callbacks
-    #
-    cb_cds_config = CustomJS(
-        args=dict(cds_evals=cds_evals, filter_config=filter_config),
-        code="""
-        const indices = [];
-        for(let i = 0; i < cds_evals.length; i++){
-            if(this.indices.indexOf(cds_evals.data["config"][i]) > -1){
-                indices.push(i);
-            }
-        }
-        filter_config.indices = indices;
-        cds_evals.change.emit();
-        """)
-    cds_config.selected.js_on_change(
-        'indices', cb_cds_config, cb_multiselect_groups)
 
-    layout = column([row(table_config, column([multichoice_config, radiobutton_config, button_config])),
+    layout = column([row(table_config, column(*widgets_config)),
                      row([
                          column([plot_ranks, select_metric_ranks, checkbox_ranks]),
                          column(
@@ -542,6 +537,92 @@ def make_color_palette(n_colors, linear: bool = False, palette: dict = None):
 
         return palette[:n_colors]
 
+def parse_df_config(df):
+    # Main dataframes and cds
+    df_config = pd.DataFrame(df)
+    # Add toll name to version (in case of same version number among tools)
+    df_config["version"] = df_config["version"] + \
+        " (" + df_config["tool"] + ")"
+    # Create random names for each configuration
+    df_config["name"] = [randomname.get_name()
+                         for i in range(df_config.shape[0])]
+    return df_config
+
+
+def parse_df_data(df):
+    # Stack metrics and reset index
+    df_data = pd.DataFrame(
+        df.stack().reset_index().set_index("metric"))
+    # Rename column headers
+    df_data.rename(columns={'level_2': "config", 0: 'value'}, inplace=True)
+    # Make sure is sorted to properly use some js methods
+    df_data.sort_values(by=["metric", 'rank', "config"], inplace=True)
+    return df_data
+
+def plot_datatable(cds_config, df_config, cds_data):
+    widgets_config = []
+    table_config = DataTable(source=cds_config,
+                             columns=[TableColumn(field=field, title=field)
+                                      for field in df_config.columns],
+                             selectable="checkbox",
+                             width=1200,
+                             height=300)
+    
+
+    choices = []
+    for h in df_config.columns:
+        for u in df_config[h].unique():
+            if u:
+                choices.append((h+"|"+u, u + " [" + h + "]"))
+
+    multichoice_config = MultiChoice(title="Select", options=choices)
+    radiobutton_config = RadioButtonGroup(labels=["AND", "OR"], active=0)
+    button_config = Button(label="Apply", button_type="default")
+    widgets_config.extend([multichoice_config, radiobutton_config, button_config])
+
+    filter_config = IndexFilter(indices=[])
+
+    cb_button_config = CustomJS(
+        args=dict(cds_config=cds_config,
+                  multichoice_config=multichoice_config,
+                  radiobutton_config=radiobutton_config),
+        code="""
+        var selected_indices = [];
+        for (var i = 0; i < cds_config.length; i++) {
+
+            if (multichoice_config.value.length > 0 ){
+                var found = 0;
+                for (var m=0; m < multichoice_config.value.length; ++m){
+                    const val = multichoice_config.value[m].split("|");
+                    if(cds_config.data[val[0]][i]==val[1]){
+                        found++;
+                    }
+                }
+                if (found==0 || (radiobutton_config.active==0 && found<multichoice_config.value.length)) {
+                    continue;
+                }
+            }
+            selected_indices.push(i);
+        }
+        cds_config.selected.indices = selected_indices;
+        """)
+    button_config.js_on_click(cb_button_config)
+
+    cb_cds_config = CustomJS(
+        args=dict(cds_data=cds_data, filter_config=filter_config),
+        code="""
+        const indices = [];
+        for(let i = 0; i < cds_data.length; i++){
+            if(this.indices.indexOf(cds_data.data["config"][i]) > -1){
+                indices.push(i);
+            }
+        }
+        filter_config.indices = indices;
+        cds_data.change.emit();
+        """)
+    cds_config.selected.js_on_change('indices', cb_cds_config)
+
+    return table_config, filter_config, widgets_config
 
 if __name__ == "__main__":
     sys.exit(0 if main() else 1)
