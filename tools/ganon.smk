@@ -48,8 +48,8 @@ rule ganon_classify:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
         lca=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.lca"),
-        rep=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"),
-        tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.tre")
+        rep=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep")
+        #tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.tre")
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bench.tsv", config["repeat"])
     log:
@@ -89,6 +89,7 @@ rule ganon_classify:
                                --verbose --output-lca \
                                {params.fixed_args} {params.args} > {log} 2>&1
         fi
+        rm {params.outprefix}.tre
         """
 
 rule ganon_classify_format:
@@ -112,6 +113,30 @@ rule ganon_classify_format:
         <(awk 'FS="\\t"{{if( $2 !~ /^[0-9]+$/){{print substr($1,1,length($1)-2)"\\t"$2"\\t"$3}}}}' {input.lca} | sort -k 2,2) \
         <(cut -f 1,2 {input.dbtax} | sort | uniq | sort -k 1,1) \
         -t$'\\t' -o "1.1,1.2,2.2" >> {output.bioboxes}
+        """
+
+
+rule ganon_profiling:
+    input:
+        rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"
+    output:
+        tre = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.tre"
+    log:
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.log"
+    benchmark:
+        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bench.tsv", config["repeat"])
+    conda:
+        srcdir("../envs/ganon.yaml")
+    params:
+        path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
+        outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}", 
+        dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
+    shell:
+        """
+        {params.path}ganon report \
+                           --db-prefix {params.dbprefix} \
+                           --input {input.rep} \
+                           --output-prefix {params.outprefix} > {log} 2>&1
         """
 
 rule ganon_profiling_format:

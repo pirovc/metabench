@@ -38,6 +38,8 @@ rule bracken_profiling:
         out = temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.out")
     log:
         "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.log"
+    benchmark:
+        repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bench.tsv", config["repeat"])
     conda:
         srcdir("../envs/bracken.yaml")
     params:

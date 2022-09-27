@@ -25,13 +25,13 @@ def input_all():
 
 rule all:
     input:
-        expand("{i}.{ext}", i=input_all(), ext=["binning.bioboxes", "binning.bench.json", "profiling.bioboxes"])
+        expand("{i}.{ext}", i=input_all(), ext=["binning.bioboxes", "binning.bench.json", "profiling.bioboxes", "profiling.bench.json"])
 
 rule bench:
     input:
-        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bench.tsv"
+        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.{type}.bench.tsv"
     output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bench.json"
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.{type}.bench.json"
     params:
         config = lambda wildcards: {"tool": wildcards.tool,
                                     "version": wildcards.vers,
@@ -41,4 +41,4 @@ rule bench:
                                     "arguments": str2args(wildcards.args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, report="binning", category="benchmark", config = params.config), output.json)
+        json_write(json_benchmark(input.bench, report=wildcards.type, category="benchmark", config = params.config), output.json)
