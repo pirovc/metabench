@@ -114,21 +114,27 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
     y=defaultdict(list)
     x=defaultdict(list)
     
-    fields = ["gt",
-              "db",
-              "classified",
-              "tp",
-              "fp",
-              "fn",
-              "sensitivity_max_db",
+    fields = ["# classified",
+              "% classified",
+              "true positives",
+              "false positives",
+              "false negatives",
+              "sensitivity (max.db.)",
               "sensitivity",
               "precision",
-              "f1_score",
-              "l1n",
-              "l2n"]
+              "F1-score",
+              "L1-norm",
+              "L2-norm"]
+
+
+    db_ranks = {}
+    for rank in fixed_ranks:
+        gt_taxids = set(gt[rank].keys())
+        # intersection is available on db
+        db_taxids = set(db[rank]) if rank in db else set()
+        db_ranks[rank] = len(db_taxids.intersection(gt_taxids))
 
     for threshold in thresholds:
-        db_ranks = defaultdict(int)
         tp_ranks = defaultdict(int)
         fp_ranks = defaultdict(int)
         fn_ranks = defaultdict(int)
@@ -143,13 +149,9 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
             res_thr[rank] = {t:a for t, a in res[rank].items() if a >= threshold}
 
         for rank in fixed_ranks:
-            # Keep only above threshold
             res_taxids = set(res_thr[rank].keys())
             gt_taxids = set(gt[rank].keys())
-            db_taxids = set(db[rank]) if rank in db else set()
-
-            # intersection is available on db
-            db_ranks[rank] = len(db_taxids.intersection(gt_taxids))
+            
             # intersection is true positive
             tp_ranks[rank] = len(res_taxids.intersection(gt_taxids))
             # everything on res not in gt is a false positive
@@ -157,8 +159,8 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
             # everything on gt not in res is a false negative
             fn_ranks[rank] = len(gt_taxids.difference(res_taxids))
             
-            for res_taxid, res_abundance in res_thr[rank].items():
-                gt_abundance = gt[rank][res_taxid] if res_taxid in gt[rank] else 0
+            for gt_taxid, gt_abundance in gt[rank].items():
+                res_abundance = res_thr[rank][gt_taxid] if gt_taxid in res_thr[rank] else 0
                 d = gt_abundance - res_abundance
                 l1_ranks[rank] += abs(d)
                 l2_ranks[rank] += pow(d,2)
@@ -170,6 +172,7 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
         for fr in fixed_ranks[::-1]:
             total_taxa_gt = len(gt[fr])
             total_classified_rank = len(res_thr[fr])
+            total_perc_classified_rank = sum(v for v in res_thr[fr].values())
             tp = tp_ranks[fr]
             fp = fp_ranks[fr]
             fn = fn_ranks[fr]
@@ -179,9 +182,8 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
             f1s = (2*sens*prec)/float(sens+prec) if sens+prec > 0 else 0
 
             print(fr,
-                  len(gt[fr]),
-                  db_ranks[fr],
                   total_classified_rank,
+                  total_perc_classified_rank,
                   tp,
                   fp,
                   fn,
@@ -194,24 +196,30 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
                   sep="\t", file=sys.stderr)
         
             if output_json:
-                final_stats[threshold_key]["db"][fr] = db_ranks[fr]
-                final_stats[threshold_key]["gt"][fr] = len(gt[fr])
-                final_stats[threshold_key]["classified"][fr] = total_classified_rank
-                final_stats[threshold_key]["tp"][fr] = tp
-                final_stats[threshold_key]["fp"][fr] = fp
-                final_stats[threshold_key]["fn"][fr] = fn
-                final_stats[threshold_key]["sensitivity_max_db"][fr] = sens
+                final_stats[threshold_key]["# classified"][fr] = total_classified_rank
+                final_stats[threshold_key]["% classified"][fr] = total_perc_classified_rank
+                final_stats[threshold_key]["true positives"][fr] = tp
+                final_stats[threshold_key]["false positives"][fr] = fp
+                final_stats[threshold_key]["false negatives"][fr] = fn
+                final_stats[threshold_key]["sensitivity (max.db.)"][fr] = sens
                 final_stats[threshold_key]["sensitivity"][fr] = sens
                 final_stats[threshold_key]["precision"][fr] = prec
-                final_stats[threshold_key]["f1_score"][fr] = f1s
-                final_stats[threshold_key]["l1n"][fr] = l1_ranks[fr]
-                final_stats[threshold_key]["l2n"][fr] = l2_ranks[fr]
+                final_stats[threshold_key]["F1-score"][fr] = f1s
+                final_stats[threshold_key]["L1-norm"][fr] = l1_ranks[fr]
+                final_stats[threshold_key]["L2-norm"][fr] = l2_ranks[fr]
 
             y[fr].append(prec)
             x[fr].append(sens)
 
+    
     final_stats["summary"] = {"aupr": defaultdict()}
+    final_stats["config"] = {"db": defaultdict(), "gt": defaultdict()}
     for fr in fixed_ranks[::-1]:
+        final_stats["config"]["db"][fr] = db_ranks[fr]
+        final_stats["config"]["gt"][fr] = len(gt[fr])
+        print("db", fr, db_ranks[fr], sep="\t", file=sys.stderr)
+        print("gt", fr, len(gt[fr]), sep="\t", file=sys.stderr)
+
         # add limits to calculate proper aupr
         aupr = np.trapz([1] + y[fr] + [0], x=[0] + x[fr] + [1])
         print("aupr", fr, aupr, sep="\t", file=sys.stderr)

@@ -14,12 +14,12 @@ import pandas as pd
 from bokeh.io import save
 from bokeh.core.enums import MarkerType
 from bokeh.plotting import figure, output_file
-from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform, FactorRange, MultiSelect, CustomJSHover, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, Spacer
+from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter,  FactorRange, MultiSelect, CustomJSHover, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, Spacer, Range1d
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.models.filters import GroupFilter, IndexFilter
 from bokeh.palettes import Category10, Category20, Colorblind, linear_palette, Turbo256
 
-from bokeh.transform import linear_cmap, transform, factor_mark
+from bokeh.transform import linear_cmap, transform, factor_cmap
 from bokeh.layouts import column, row
 
 
@@ -54,7 +54,7 @@ def main():
     parsed_json = parse_json(json_files)
 
     report_types = ["build", "binning", "profiling"]
-    report_categories = ["benchmark", "size", "stats", "evals"]
+    report_categories = ["benchmark", "evals"]
     report_elements = ["config", "metrics"]
     tables = {}  # tables[type][category][element]
     for t in report_types:
@@ -70,7 +70,7 @@ def main():
         tables[rep_type][rep_cate]["config"] = pd.concat(
             [tables[rep_type][rep_cate]["config"], load_config(pjson)], ignore_index=True)
 
-        # Need to be to concat by rank
+        # concat by rank and get same index
         tables[rep_type][rep_cate]["metrics"] = pd.concat(
             [tables[rep_type][rep_cate]["metrics"], load_metrics(pjson)], axis=1, ignore_index=True)
 
@@ -81,26 +81,40 @@ def main():
     #             print(tables[t][c][e])
 
     main_tabs = []
-    building_tabs = []
-    profiling_tabs = []
-    binning_tabs = []
+    evals_tabs = []
+    bench_tabs = []
+
+    tools = "pan,wheel_zoom,box_zoom,box_select,tap,reset,save"
+
+
     if not tables["profiling"]["evals"]["config"].empty:
-        profiling_tabs.append(Panel(child=plot_evals(
-            "profiling", tables, default_ranks), title="Evaluations"))
+        evals_tabs.append(Panel(child=plot_evals(
+            "profiling", tables, default_ranks, tools), title="Profiling"))
 
     if not tables["binning"]["evals"]["config"].empty:
-        binning_tabs.append(Panel(child=plot_evals(
-            "binning", tables, default_ranks), title="Evaluations"))
+        evals_tabs.append(Panel(child=plot_evals(
+            "binning", tables, default_ranks, tools), title="Binning"))
 
-    if not tables["profiling"]["stats"]["config"].empty:
-            profiling_tabs.append(Panel(child=plot_stats(
-                "profiling", tables, default_ranks), title="Stats"))
 
-    if profiling_tabs:
+    if not tables["profiling"]["benchmark"]["config"].empty:
+        bench_tabs.append(Panel(child=plot_bench(
+            "profiling", tables, default_ranks, tools), title="Profiling"))
+
+    if not tables["binning"]["benchmark"]["config"].empty:
+        bench_tabs.append(Panel(child=plot_bench(
+            "binning", tables, default_ranks, tools), title="Binning"))
+    
+    if not tables["build"]["benchmark"]["config"].empty:
+        bench_tabs.append(Panel(child=plot_bench(
+            "build", tables, default_ranks, tools), title="Build"))
+
+
+    if evals_tabs:
         main_tabs.append(
-            Panel(child=Tabs(tabs=profiling_tabs), title="Profiling"))
-    if binning_tabs:
-        main_tabs.append(Panel(child=Tabs(tabs=binning_tabs), title="Binning"))
+            Panel(child=Tabs(tabs=evals_tabs), title="Evaluations"))
+    
+    if bench_tabs:
+        main_tabs.append(Panel(child=Tabs(tabs=bench_tabs), title="Benchamarks"))
 
     main_layout = Tabs(tabs=main_tabs)
 
@@ -109,68 +123,118 @@ def main():
 
     return True
 
-def plot_stats(report, tables, default_ranks):
 
-    df_config = parse_df_config(tables[report]["stats"]["config"])
+def plot_bench(report, tables, default_ranks, tools):
+    df_config = parse_df_config(tables[report]["benchmark"]["config"])
     cds_config = ColumnDataSource(df_config)
 
-    df_stats = parse_df_data(tables[report]["stats"]["metrics"])
-    cds_stats = ColumnDataSource(df_stats)
+    df_bench = parse_df_data(tables[report]["benchmark"]["metrics"])
+    cds_bench = ColumnDataSource(df_bench)
 
     print(df_config)
-    print(df_stats)
+    print(df_bench)
 
+    metrics = sorted(set(cds_bench.data["metric"]))
+    init_metric = metrics[0]
+
+    smarkers, sfillcolor, slinecolor = define_markers(df_config.shape[0])
+
+    hover_tool = make_hover(cds_config, ["index", "fixed_arguments"])
     #
     # DataTable
     #
-    table_config, filter_config, widgets_config = plot_datatable(cds_config, df_config, cds_stats)
+    table_config, filter_config, widgets_config = plot_datatable(cds_config, df_config, cds_bench)
+    
 
+    #
+    # Plot Group
+    #
+    plot_groups = figure(title="Groups",
+                         x_range=FactorRange(
+                             factors=list(cds_config.data["name"])),
+                         toolbar_location="above",
+                         tools=tools)
 
-    # #
-    # # Stats
-    # #
-    # plot_stats = figure(title="Stats",
-    #                     x_range=FactorRange(
-    #                          factors=cds_config.data["name"]),
-    #                     y_range=Range1d(start=0, end=100)
+    select_metric_x_groups = Select(
+        title="Metric (x):", value=init_metric, options=metrics)
 
-    # # Change values on x-axis based on selected configuration groups
-    # name_x = CustomJSTransform(
-    #     args=dict(cds_config=cds_config),
-    #     v_func="""
-    #     const y = new Array(xs.length);
-    #     for (let i = 0; i < xs.length; i++) {
-    #         y[i] = cds_config.data["name"][xs[i]];
-    #     }
-    #     return y;
-    # """)
+    multiselect_groups = MultiSelect(
+        value=["name"], options=df_config.columns.to_list())
 
-    # plot_stats.scatter(default_ranks, x=transform("config", name_x),
-    #                       source=cds_stats,
-    #                       width=1,
-    #                       #line_color=None,  # to avoid printing small border for zeros
-    #                       #color=make_color_palette(top_obs_bars, linear=True) + ("#868b8e", "#eeede7"))
-    #                       color=make_color_palette(len(default_ranks)))
+    filter_metric_x_groups = GroupFilter(column_name="metric", group=init_metric)
+    view_groups = CDSView(source=cds_bench, filters=[filter_metric_x_groups, filter_config])
 
+    # Change values on x-axis based on selected configuration groups
+    group_x = CustomJSTransform(
+        args=dict(cds_config=cds_config,
+                  multiselect_groups=multiselect_groups),
+        v_func="""
+        if(multiselect_groups.value.length>0){
+            const y = new Array(xs.length);
+            for (let i = 0; i < xs.length; i++) {
+                var group = "|";
+                for(let v = 0; v < multiselect_groups.value.length; v++){
+                    group += cds_config.data[multiselect_groups.value[v]][xs[i]] + "|"
+                }
+                y[i] = group;
+            }
+            return y;
+        }else{
+            return xs;
+        }
+    """)
 
-    # plot_groups.scatter(x=transform("config", name_x), y="value",
-    #                     source=cds_evals,
-    #                     view=view_groups,
-    #                     size=12,
-    #                     marker=transform("config", CustomJSTransform(
-    #                         args=dict(e=smarkers), v_func="return xs.map(function(x) { return e[x]; });")),
-    #                     fill_color=transform("config", CustomJSTransform(args=dict(
-    #                         e=sfillcolor), v_func="return xs.map(function(x) { return e[x]; });")),
-    #                     line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
+    plot_groups.scatter(x=transform("config", group_x), y="value",
+                        source=cds_bench,
+                        view=view_groups,
+                        size=12,
+                        marker=transform("config", CustomJSTransform(
+                            args=dict(e=smarkers), v_func="return xs.map(function(x) { return e[x]; });")),
+                        fill_color=transform("config", CustomJSTransform(args=dict(
+                            e=sfillcolor), v_func="return xs.map(function(x) { return e[x]; });")),
+                        line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
+    plot_groups.add_tools(hover_tool)
+
+    plot_groups.xaxis.major_label_orientation = "vertical"
+    plot_groups.yaxis.axis_label = init_metric
+
+    cb_select_metric_x_groups = CustomJS(
+        args=dict(cds_bench=cds_bench,
+                  filter_metric_x_groups=filter_metric_x_groups,
+                  yaxis=plot_groups.yaxis[0]),
+        code="""
+        filter_metric_x_groups.group = this.value;
+        yaxis.axis_label = this.value;
+        cds_bench.change.emit();
+        """)
+    select_metric_x_groups.js_on_change('value', cb_select_metric_x_groups)
+
+    cb_multiselect_groups = CustomJS(
+        args=dict(cds_config=cds_config,
+                  plot_groups=plot_groups,
+                  multiselect_groups=multiselect_groups),
+        code="""
+        var factors = new Set();
+        for(let i = 0; i < cds_config.selected.indices.length; i++){
+            var group = "|";
+            for(let v = 0; v < multiselect_groups.value.length; v++){
+                group += cds_config.data[multiselect_groups.value[v]][cds_config.selected.indices[i]] + "|"
+            }
+            factors.add(group);
+        }
+        var sorted_factors = [...factors].sort();
+        plot_groups.x_range.factors = sorted_factors;
+        """)
+    multiselect_groups.js_on_change('value', cb_multiselect_groups)
+    # trigger changes on checkboxes table
+    cds_config.selected.js_on_change('indices', cb_multiselect_groups)
 
     layout = column([row(table_config, column(*widgets_config)),
-                     row(Spacer())
+                     row(column([plot_groups, select_metric_x_groups, multiselect_groups]))
                      ])
-
-
     return layout
 
-def plot_evals(report, tables, default_ranks):
+def plot_evals(report, tables, default_ranks, tools):
 
     df_config = parse_df_config(tables[report]["evals"]["config"])
     cds_config = ColumnDataSource(df_config)
@@ -181,9 +245,6 @@ def plot_evals(report, tables, default_ranks):
     #print(df_config)
     #print(df_evals)
 
-    # General variables
-    tools = "pan,wheel_zoom,box_zoom,box_select,tap,reset,save"
-
     metrics = []
     for metric in set(cds_evals.data["metric"]):
         v = metric.split("|")
@@ -192,30 +253,10 @@ def plot_evals(report, tables, default_ranks):
     init_metric = next(iter(metrics))[0]
     init_rank = "species" if "species" in default_ranks else default_ranks[-1]
 
-    # Remove markes without fill-color
-    markers = list(MarkerType)
-    for m in ["asterisk", "cross", "dash", "dot", "x", "y"]:
-        markers.remove(m)
-    n_config = df_config.shape[0]
-    if n_config > len(markers):
-        smarkers = random.choices(markers, k=n_config)
-    else:
-        smarkers = random.sample(markers, n_config)
-    sfillcolor = random.sample(make_color_palette(n_config), n_config)
-    slinecolor = random.sample(make_color_palette(n_config), n_config)
+    smarkers, sfillcolor, slinecolor = define_markers(df_config.shape[0])
 
     # Hover tool for tooltips (all plots)
-    hover_tool = HoverTool(
-        tooltips=[("Tool", "@config{tool}"),
-                  ("Version", "@config{version}"),
-                  ("Sample", "@config{sample}"),
-                  ("DB", "@config{database}"),
-                  ("DB Args.", "@config{database_arguments}"),
-                  ("Args. ", "@config{arguments}"),
-                  ("Name", "@config{name}")],
-        formatters={"@config": CustomJSHover(args=dict(
-            cds_config=cds_config), code="return cds_config.data[format][value]")}
-    )
+    hover_tool = make_hover(cds_config, ["index", "database_arguments"])
 
     #
     # DataTable
@@ -264,9 +305,16 @@ def plot_evals(report, tables, default_ranks):
         args=dict(plot_ranks=plot_ranks,
                   default_ranks=default_ranks),
         code="""
-        plot_ranks.x_range.factors = this.active.map(function(x) { return default_ranks[x]; });;
+        plot_ranks.x_range.factors = this.active.map(function(x) { return default_ranks[x]; });
         """)
     checkbox_ranks.js_on_click(cb_checkbox_ranks)
+
+    callback = CustomJS(
+        args=dict(),
+        code="""
+        console.log("change")
+        """)
+    plot_ranks.x_range.js_on_change('end', callback)
 
     #
     # Plot Compare
@@ -411,6 +459,7 @@ def plot_evals(report, tables, default_ranks):
                             e=sfillcolor), v_func="return xs.map(function(x) { return e[x]; });")),
                         line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
     plot_groups.add_tools(hover_tool)
+
     plot_groups.xaxis.major_label_orientation = "vertical"
     plot_groups.yaxis.axis_label = init_metric
 
@@ -623,6 +672,30 @@ def plot_datatable(cds_config, df_config, cds_data):
     cds_config.selected.js_on_change('indices', cb_cds_config)
 
     return table_config, filter_config, widgets_config
+
+def define_markers(n_elements):
+    
+    # Remove markes without fill-color
+    markers = list(MarkerType)
+    for m in ["asterisk", "cross", "dash", "dot", "x", "y"]:
+        markers.remove(m)
+    if n_elements > len(markers):
+        smarkers = random.choices(markers, k=n_elements)
+    else:
+        smarkers = random.sample(markers, n_elements)
+    sfillcolor = random.sample(make_color_palette(n_elements), n_elements)
+    slinecolor = random.sample(make_color_palette(n_elements), n_elements)
+
+    return smarkers, sfillcolor, slinecolor
+
+def make_hover(cds_config, exclude_list: list = []):
+    hover_tool = HoverTool(
+        tooltips=[(f, "@config{" + f + "}") for f in cds_config.data.keys() if f not in exclude_list] +
+                 [("value", "@value")],
+        formatters={"@config": CustomJSHover(args=dict(
+            cds_config=cds_config), code="return cds_config.data[format][value]")}
+    )
+    return hover_tool
 
 if __name__ == "__main__":
     sys.exit(0 if main() else 1)

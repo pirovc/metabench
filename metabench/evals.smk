@@ -18,74 +18,8 @@ def input_all():
 
 rule all:
     input:
-        expand("{i}.{ext}", i=input_all(), ext=["binning.stats.json", 
-                                                "binning.evals.json",
-                                                "profiling.stats.json",
+        expand("{i}.{ext}", i=input_all(), ext=["binning.evals.json",
                                                 "profiling.evals.json"])
-
-rule stats_profiling:
-    input:
-        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bioboxes"
-    output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.stats.json"
-    params:
-        config = lambda wildcards: {"tool": wildcards.tool,
-                                    "version": wildcards.vers,
-                                    "sample": wildcards.samp,
-                                    "database": wildcards.dtbs,
-                                    "database_arguments": str2args(wildcards.dtbs_args),
-                                    "arguments": str2args(wildcards.args)}
-    run:
-        out_json = json_default(report="profiling", category="stats", config=params.config)
-        out_json["metrics"]["total_classified"] = defaultdict(float)
-        with open(input.bioboxes, "r") as file:
-            for line in file:
-                if line[0] == "@":
-                    continue
-                fields = line.rstrip().split("\t")
-                # sum percentage of classification for each rank
-                out_json["metrics"]["total_classified"][fields[1]] += float(fields[4])
-        json_write(out_json, output.json)
-
-rule stats_binning_script:
-    input:
-        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bioboxes"
-    output:
-        json_tmp = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.stats.tmp.json")
-    log:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.stats.log"
-    conda:
-        srcdir("../envs/evals.yaml")
-    params:
-         scripts_path = srcdir("../scripts/"),
-         ranks = " ".join(config["ranks"]),
-         taxonomy_files = config["taxonomy_files"]
-    shell: 
-        """
-        python3 {params.scripts_path}stats_binning.py \
-                --ranks {params.ranks} \
-                --input-file {input.bioboxes} \
-                --output-file {output.json_tmp} \
-                --taxonomy {config[taxonomy]} \
-                --taxonomy-files {params.taxonomy_files} 2> {log}
-        """
-
-rule stats_binning:
-    input:
-        json_tmp = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.stats.tmp.json"
-    output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.stats.json",
-    params:
-        config = lambda wildcards: {"tool": wildcards.tool,
-                                    "version": wildcards.vers,
-                                    "sample": wildcards.samp,
-                                    "database": wildcards.dtbs,
-                                    "database_arguments": str2args(wildcards.dtbs_args),
-                                    "arguments": str2args(wildcards.args)}
-    run:
-        out_json = json_default(report="binning", category="stats", config=params.config)
-        out_json["metrics"] = json_load(input.json_tmp)
-        json_write(out_json, output.json)
 
 
 rule evals_binning_script:

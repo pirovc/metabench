@@ -35,6 +35,7 @@ rule bench:
     params:
         config = lambda wildcards: {"tool": wildcards.tool,
                                     "version": wildcards.vers,
+                                    "sample": wildcards.samp,
                                     "database": wildcards.dtbs,
                                     "database_arguments": str2args(wildcards.dtbs_args),
                                     "arguments": str2args(wildcards.args),

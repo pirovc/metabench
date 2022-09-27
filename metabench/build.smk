@@ -21,11 +21,12 @@ def input_build():
 
 rule all:
     input:
-        build = expand("{i}.{ext}", i=input_build(), ext=["build.bench.json", "build.size.json"])
+        build = expand("{i}.{ext}", i=input_build(), ext=["build.bench.json"])
 
 rule bench:
     input:
-        bench = "{tool}/{vers}/{dtbs}/{args}.build.bench.tsv"
+        bench = "{tool}/{vers}/{dtbs}/{args}.build.bench.tsv",
+        fsize = "{tool}/{vers}/{dtbs}/{args}.build.size.tsv"
     output:
         json = "{tool}/{vers}/{dtbs}/{args}.build.bench.json"
     params:
@@ -35,25 +36,10 @@ rule bench:
                                     "arguments": str2args(wildcards.args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, report="build", category="benchmark", config=params.config), output.json)
-
-rule size:
-    input:
-        fsize = "{tool}/{vers}/{dtbs}/{args}.build.size.tsv"
-    output:
-        json = "{tool}/{vers}/{dtbs}/{args}.build.size.json"
-    params:
-        config = lambda wildcards: {"tool": wildcards.tool,
-                                    "version": wildcards.vers,
-                                    "database": wildcards.dtbs,
-                                    "arguments": str2args(wildcards.args),
-                                    "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}
-    run:
-        out_json = json_default(report="build", category="size", config=params.config)
+        out_json = json_benchmark(input.bench, report="build", category="benchmark", config=params.config)
         out_json["metrics"]["total_size_bytes"] = 0
         with open(input.fsize, "r") as file:
             for line in file:
                 s, f = line.rstrip().split("\t")
                 out_json["metrics"]["total_size_bytes"] += int(s)
         json_write(out_json, output.json)
-        
