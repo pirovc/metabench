@@ -26,7 +26,7 @@ def main():
                         type=file_exists, nargs="*", help="")
     parser.add_argument("-r", "--ranks",          metavar="", type=str, nargs="*",
                         help="empty for default ranks (superkingdom phylum class order family genus species)")
-    parser.add_argument("-t", "--thresholds", nargs="*", type=float, default=[0],
+    parser.add_argument("-s", "--thresholds", nargs="*", type=float, default=[0],
                         help="Thresholds to generate evaluations [0-100]")
     parser.add_argument("-j", "--output-json", type=str,
                         help="Output file for evaluation in json (cumulative mode)")

@@ -9,7 +9,8 @@ rule ganon_build:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/ganon.yaml")
+        #srcdir("../envs/ganon.yaml")
+        srcdir("../envs/evals.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{dtbs}/{args}/ganon_db",
@@ -19,9 +20,9 @@ rule ganon_build:
     shell: 
         """
         # if path is provided, deactivate conda
-        if [[ ! -z "{params.path}" ]]; then
-            source deactivate;
-        fi
+        # if [[ ! -z "{params.path}" ]]; then
+        #     source deactivate;
+        # fi
         {params.path}ganon build-custom \
         --db-prefix {params.outprefix} \
         --input {params.db[folder]} \
@@ -126,13 +127,19 @@ rule ganon_profiling:
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bench.tsv", config["repeat"])
     conda:
-        srcdir("../envs/ganon.yaml")
+        #srcdir("../envs/ganon.yaml")
+        srcdir("../envs/evals.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}", 
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
     shell:
         """
+        # if path is provided, deactivate conda
+        # if [[ ! -z "{params.path}" ]]; then
+        #     source deactivate;
+        # fi
+        
         {params.path}ganon report \
                            --db-prefix {params.dbprefix} \
                            --input {input.rep} \

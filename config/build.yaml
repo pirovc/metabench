@@ -4,7 +4,7 @@ repeat: 1
 
 tools:
   ganon:
-    "1.2.0": ""
+    "1.3.0-dev": "/home/pirov/code/ganon/"
   kraken2:
     "2.1.2": ""
   bracken:
@@ -20,12 +20,15 @@ dbs:
 
 run:
   ganon:
-    "1.2.0":
+    "1.3.0-dev":
       "arc_bac_rs_cg_t1s":
         fixed_args:
           "--ncbi-file-info": "/home/pirov/data/abfv_rs_cg_t3s/ab_t1s/assembly_summary.txt"
+          "--ganon-path": "/home/pirov/code/ganon/"
         args:
           "--level": "species"
+          "-k": [19,31,2]
+          "-w": [27,35,4]
 
   kraken2:
     "2.1.2":
