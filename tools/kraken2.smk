@@ -24,13 +24,14 @@ rule kraken2_build:
         args = lambda wildcards: str2args(wildcards.args)
     shell: 
         """
-        mkdir -p "{params.outprefix}taxonomy"
-        mkdir -p "{params.outprefix}library"
-        tar xf {params.db[taxonomy_files]} -C {params.outprefix}taxonomy/ nodes.dmp names.dmp > {log} 2>&1
-        find {params.db[folder]} -name *{params.db[extension]} | xargs zcat > {output.fasta} 2>> {log}
-        awk 'BEGIN {{FS="\\t";OFS="\\t"; print "accession","accession.version","taxid","gi"}}{{ split($4,acc,"."); print acc[1],$4,$6,"0" }}' {params.db[details]} > {output.accession2taxid} 2>> {log}
+        #mkdir -p "{params.outprefix}taxonomy"
+        #mkdir -p "{params.outprefix}library"
+        #tar xf {params.db[taxonomy_files]} -C {params.outprefix}taxonomy/ nodes.dmp names.dmp > {log} 2>&1
+        #awk 'BEGIN {{FS="\\t";OFS="\\t"; print "accession","accession.version","taxid","gi"}}{{ split($4,acc,"."); print acc[1],$4,$6,"0" }}' {params.db[details]} > {output.accession2taxid} 2>> {log}
         # Kraken2
+        find {params.db[folder]} -name *{params.db[extension]} | xargs zcat > {output.fasta} 2>> {log}
         {params.path}kraken2-build --db {params.outprefix} --no-masking --add-to-library {output.fasta} >> {log} 2>&1
+        {params.path}kraken2-build --db {params.outprefix} --download-taxonomy >> {log} 2>&1
         {params.path}kraken2-build --build --db {params.outprefix} --threads {threads} {params.args} {params.fixed_args} >> {log} 2>&1
         rm -rfv {params.outprefix}taxonomy/prelim_map.txt >> {log} 2>&1
         """
