@@ -26,6 +26,8 @@ def main():
                         type=file_exists, nargs="*", help="")
     parser.add_argument("-r", "--ranks",          metavar="", type=str, nargs="*",
                         help="empty for default ranks (superkingdom phylum class order family genus species)")
+    parser.add_argument("-t", "--trim-readid", type=str, default=0,
+                        help="n of chars to trim from the end of read-id provided in --input-results (usually /1)")
     parser.add_argument("-c", "--output-cumulative", type=str,
                         help="Output file for evaluation in json (cumulative mode)")
     parser.add_argument("-r", "--output-rank", type=str,
@@ -93,6 +95,8 @@ def main():
                              fields[2] + " not found in taxonomy\n")
             continue
         readid = fields[0]
+        if args.trim_readid:
+            readid = readid[:-args.trim_readid]
         assembly = fields[1]
         res_leaf_taxids.add(taxid)
         res[readid] = (assembly, taxid)
