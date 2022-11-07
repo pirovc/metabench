@@ -106,14 +106,9 @@ rule ganon_classify_format:
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
 
-        # if numeric (taxid) or assembly
-        awk 'FS="\\t"{{if($2 ~ /^[0-9]+$/){{print substr($1,1,length($1)-2)"\\t0\\t"$2}}}}' {input.lca} >> {output.bioboxes}
-
-        # get taxid if classified at assembly level
-        join -1 2 -2 1 \
-        <(awk 'FS="\\t"{{if( $2 !~ /^[0-9]+$/){{print substr($1,1,length($1)-2)"\\t"$2"\\t"$3}}}}' {input.lca} | sort -k 2,2) \
-        <(cut -f 1,2 {input.dbtax} | sort | uniq | sort -k 1,1) \
-        -t$'\\t' -o "1.1,1.2,2.2" >> {output.bioboxes}
+        # Check with .tax entries at "assembly" level and taxonomic level
+        # also report entries not matching .tax (-a 1)
+        join -1 2 -2 1 <(sort -t$'\t' -k 2,2 {input.lca}) <(sort -t$'\t' -k 1,1 {input.dbtax}) -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 | awk 'BEGIN{{FS=OFS="\t"}}{{if($4=="assembly"){{print $1,$2,$3}}else{{print $1,"0",$2}}}}' >> {output.bioboxes}
         """
 
 
