@@ -114,7 +114,7 @@ def header_bioboxes_binning(tool, wildcards):
     header = ""
     header += "@Version:0.10.0\n"
     header += "@SampleID: " + tool + " " + " ".join(wildcards) + "\n"
-    header += "@@SEQUENCEID\tTAXID\tBINID"
+    header += "@@SEQUENCEID\tBINID\tTAXID"
     return header
 
 
