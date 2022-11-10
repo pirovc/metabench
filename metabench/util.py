@@ -113,8 +113,8 @@ def header_bioboxes_binning(tool, wildcards):
     # https://github.com/bioboxes/rfc/blob/master/data-format/binning.mkd
     header = ""
     header += "@Version:0.10.0\n"
-    header += "@SampleID: " + tool + " " + " ".join(wildcards) + "\n"
-    header += "@@SEQUENCEID\tBINID\tTAXID"
+    header += "@SampleID:" + tool + " " + " ".join(wildcards) + "\n"
+    header += "@@SEQUENCEID\tTAXID\t__NCBI_ASSEMBLY_ACCESSION\t__NCBI_SEQUENCE_ACCESSION"
     return header
 
 

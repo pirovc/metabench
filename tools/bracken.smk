@@ -11,7 +11,7 @@ rule bracken_build:
         srcdir("../envs/bracken.yaml")
     params:
         path = lambda wildcards: config["tools"]["bracken"][wildcards.vers],
-        outprefix = "bracken/{vers}/{dtbs}/{args}/",
+        outprefix = "bracken/{vers}/{dtbs}/", #no args, to link from kraken2
         fixed_args = lambda wildcards: dict2args(config["run"]["bracken"][wildcards.vers][wildcards.dtbs]["fixed_args"]),
         kraken2db = lambda wildcards: config["run"]["bracken"][wildcards.vers][wildcards.dtbs]["fixed_args"]["-d"],
         args = lambda wildcards: str2args(wildcards.args)

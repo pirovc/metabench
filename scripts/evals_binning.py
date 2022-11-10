@@ -15,11 +15,11 @@ def main():
     parser = argparse.ArgumentParser(
         prog="ganon benchmark evaluation", conflict_handler="resolve", add_help=True)
     parser.add_argument("-i", "--input-results", metavar="", type=file_exists,
-                        help="readid <tab> assembly id (or 0) <tab> taxid")
-    parser.add_argument("-g", "--input-ground-truth", metavar="",
-                        type=file_exists, help="readid <tab> assembly id (or 0) <tab> taxid")
-    parser.add_argument("-d", "--input-database-profile", metavar="",
-                        type=file_exists, help="taxid <tab> parent <tab> rank <tab> name")
+                        help="bioboxes binning format v0.10.0: @@SEQUENCEID <tab> TAXID [<tab> __NCBI_ASSEMBLY_ACCESSION] [<tab> __NCBI_SEQUENCE_ACCESSION]")
+    parser.add_argument("-g", "--input-ground-truth", metavar="", type=file_exists,
+                        help="bioboxes binning format v0.10.0: @@SEQUENCEID <tab> TAXID [<tab> __NCBI_ASSEMBLY_ACCESSION] [<tab> __NCBI_SEQUENCE_ACCESSION]")
+    parser.add_argument("-d", "--input-database-profile", metavar="", type=file_exists,
+                        help="same as .tax file from ganon: taxid <tab> parent <tab> rank <tab> name")
     parser.add_argument("-t", "--taxonomy",       metavar="",
                         type=str, help="custom, ncbi or gtdb")
     parser.add_argument("-x", "--taxonomy-files", metavar="",
@@ -43,26 +43,17 @@ def main():
                        "w") if args.output_cumulative else None
     output_rank = open(args.output_rank, "w") if args.output_rank else None
 
-    # Ground truth: readid <tab> assembly <tab> taxid
-    gt = dict()
-    gt_leaf_taxids = set()
-    for line in gzip.open(gt_file, "rt") if gt_file.endswith(".gz") else open(gt_file, "r"):
-        if line[0] == "@":
-            continue
-        fields = line.rstrip().split("\t")
-        taxid = tax.latest(fields[2])
-        if taxid == tax.undefined_node:
-            sys.stderr.write(gt_file + ": " +
-                             fields[2] + " not found in taxonomy\n")
-            continue
-        readid = fields[0]
-        assembly = fields[1]
-        gt_leaf_taxids.add(taxid)
-        gt[readid] = (assembly, taxid)
+    # Results and Ground truth
+    # bioboxes binning format v0.10.0: @@SEQUENCEID <tab> TAXID [<tab> __NCBI_ASSEMBLY_ACCESSION <tab> __NCBI_SEQUENCE_ACCESSION]
+    gt, gt_assembly, gt_sequence = parse_bioboxes_binning(gt_file, tax)
+    res, res_assembly, res_sequence = parse_bioboxes_binning(res_file, tax)
+    gt_leaf_taxids = set(gt.values())
+    res_leaf_taxids = set(res.values())
 
     # Database profile: taxid <tab> parent <tab> rank <tab> name
-    db_taxids = set()
+    db = set()
     db_assembly = set()
+    db_sequence = set()
     if db_file:
         for line in gzip.open(db_file, "rt") if db_file.endswith(".gz") else open(db_file, "r"):
             if line[0] == "@":
@@ -72,30 +63,14 @@ def main():
             if taxid == tax.undefined_node:
                 if fields[2] == "assembly":
                     db_assembly.add(fields[0])
+                elif fields[2] == "sequence":
+                    db_sequence.add(fields[0])
                 else:
                     sys.stderr.write(db_file + ": " +
                                      fields[0] + " not found in taxonomy\n")
                     continue
             else:
-                db_taxids.add(taxid)
-
-    # Results: readid <tab> assembly <tab> taxid
-    # if no assembly readid <tab> 0 <tab> taxid
-    res = dict()
-    res_leaf_taxids = set()
-    for line in gzip.open(res_file, "rt") if res_file.endswith(".gz") else open(res_file, "r"):
-        if line[0] == "@":
-            continue
-        fields = line.rstrip().split("\t")
-        taxid = tax.latest(fields[2])
-        if taxid == tax.undefined_node:
-            sys.stderr.write(res_file + ": " +
-                             fields[2] + " not found in taxonomy\n")
-            continue
-        readid = fields[0]
-        assembly = fields[1]
-        res_leaf_taxids.add(taxid)
-        res[readid] = (assembly, taxid)
+                db.add(taxid)
 
     # Cumulative evaluation
     # filter tax for faster LCA (keep root out)
@@ -112,7 +87,7 @@ def main():
     for leaf_gttaxid in gt_leaf_taxids:
         if not rank_gttaxid.get(leaf_gttaxid):  # if not yet calculated
             for t in tax.lineage(leaf_gttaxid)[::-1]:
-                if t in db_taxids:
+                if t in db:
                     rank_gttaxid[leaf_gttaxid] = tax.rank(
                         tax.closest_parent(t, fixed_ranks))
                     break
@@ -125,7 +100,7 @@ def main():
     cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu)
 
     # Rank evaluation
-    rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank)
+    rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db, db_assembly, db_sequence, tax, fixed_ranks, output_rank)
 
     if output_cumu:
         output_cumu.close()
@@ -144,7 +119,7 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
     fp_lower_ranks = defaultdict(int)
     fp_higher_ranks = defaultdict(int)
 
-    for readid, (_, gt_taxid) in gt.items():
+    for readid, gt_taxid in gt.items():
 
         leaf_rank_gt = tax.rank(tax.closest_parent(gt_taxid, fixed_ranks))
         gt_ranks[leaf_rank_gt] += 1
@@ -155,7 +130,7 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
             db_ranks[rank_gttaxid[gt_taxid]] += 1
 
         if readid in res.keys():  # if read is classified
-            res_taxid = res[readid][1]
+            res_taxid = res[readid]
 
             # taxonomic clasification
             r = tax.rank(tax.closest_parent(res_taxid, fixed_ranks))
@@ -270,28 +245,39 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
         json.dump(final_stats, output_cumu, indent=4)
 
 
-def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
+def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db, db_assembly, db_sequence, tax, fixed_ranks, output_rank):
 
     stats = {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0}
     classified_ranks = defaultdict(int)
     classified_ranks_assembly = 0
+    classified_ranks_sequence = 0
     db_ranks = defaultdict(int)
     db_ranks_assembly = 0
+    db_ranks_sequence = 0
     gt_ranks = defaultdict(int)
     gt_ranks_assembly = 0
+    gt_ranks_sequence = 0
     tp_ranks = defaultdict(int)
     tp_ranks_assembly = 0
+    tp_ranks_sequence = 0
     fp_ranks = defaultdict(int)
     fp_ranks_assembly = 0
+    fp_ranks_sequence = 0
 
-    for readid, (gt_assembly, gt_taxid) in gt.items():
+    for readid, gt_taxid in gt.items():
 
         # Check if there"s assembly id on ground truth and account for it
-        if gt_assembly != "0":
+        if readid in gt_assembly:
             gt_ranks_assembly += 1
             # if assembly is present in the database (=could be classified)
-            if gt_assembly in db_assembly:
+            if gt_assembly[readid] in db_assembly:
                 db_ranks_assembly += 1
+
+        if readid in gt_sequence:
+            gt_ranks_sequence += 1
+            # if sequence is present in the database (=could be classified)
+            if gt_sequence[readid] in db_sequence:
+                db_ranks_sequence += 1
 
         # already pre-built build_lineages() with fixed_ranks
         gt_lin = tax.lineage(gt_taxid)
@@ -299,21 +285,28 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
         for idx, fr in enumerate(fixed_ranks):
             if gt_lin[idx]:
                 gt_ranks[fr] += 1
-                if gt_lin[idx] in db_taxids:
+                if gt_lin[idx] in db:
                     # if the is present in the database (=could be classified)
                     db_ranks[fr] += 1
 
         if readid in res.keys():  # if read is classified
-            res_assembly = res[readid][0]
-            res_taxid = res[readid][1]
+            res_taxid = res[readid]
 
             # has a unique assembly classification
-            if res_assembly != "0":
+            if readid in res_assembly:
                 classified_ranks_assembly += 1
-                if res_assembly == gt_assembly:  # it is correct
+                if readid in gt_assembly and res_assembly[readid] == gt_assembly[readid]:  # it is correct
                     tp_ranks_assembly += 1
                 else:
                     fp_ranks_assembly += 1
+
+            # has a unique assembly classification
+            if readid in res_sequence:
+                classified_ranks_sequence += 1
+                if readid in gt_sequence and res_sequence[readid] == gt_sequence[readid]:  # it is correct
+                    tp_ranks_sequence += 1
+                else:
+                    fp_ranks_sequence += 1
 
             # already pre-built build_lineages() with fixed_ranks
             res_lin = tax.lineage(res_taxid)
@@ -345,6 +338,36 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
     header = ["--rank_eval--"] + fields
 
     print("\t".join(header), file=sys.stderr)
+
+    sens_sequence = tp_ranks_sequence/total_reads_gt
+    sens_max_sequence = tp_ranks_sequence / \
+        float(db_ranks_sequence) if db_ranks_sequence > 0 else 0
+    prec_sequence = tp_ranks_sequence / \
+        classified_ranks_sequence if classified_ranks_sequence > 0 else 0
+    f1s_sequence = (2*sens_sequence*prec_sequence)/float(sens_sequence +
+                                                         prec_sequence) if sens_sequence + prec_sequence > 0 else 0
+    print("sequence",
+          gt_ranks_sequence,
+          db_ranks_sequence,
+          classified_ranks_sequence,
+          tp_ranks_sequence,
+          fp_ranks_sequence,
+          "%.5f" % sens_max_sequence,
+          "%.5f" % sens_sequence,
+          "%.5f" % prec_sequence,
+          "%.5f" % f1s_sequence, sep="\t", file=sys.stderr)
+
+    if output_rank:
+        final_stats["db"]["sequence"] = db_ranks_sequence
+        final_stats["gt"]["sequence"] = gt_ranks_sequence
+        final_stats["classified"]["sequence"] = classified_ranks_sequence
+        final_stats["tp"]["sequence"] = tp_ranks_sequence
+        final_stats["fp"]["sequence"] = fp_ranks_sequence
+        final_stats["sensitivity_max_db"]["sequence"] = sens_max_sequence
+        final_stats["sensitivity"]["sequence"] = sens_sequence
+        final_stats["precision"]["sequence"] = prec_sequence
+        final_stats["f1_score"]["sequence"] = f1s_sequence
+
 
     sens_assembly = tp_ranks_assembly/total_reads_gt
     sens_max_assembly = tp_ranks_assembly / \
@@ -409,6 +432,44 @@ def rank_eval(res, gt, tax, fixed_ranks, db_assembly, db_taxids, output_rank):
 
     if output_rank:
         json.dump(final_stats, output_rank, indent=4)
+
+
+def parse_bioboxes_binning(file, tax):
+
+    not_found_tax = set()
+    res = {}
+    assembly = {}
+    sequence = {}
+    ## Default headers in case none is provided
+    headers = {"SEQUENCEID": 0, "TAXID": 1}
+    for line in gzip.open(file, "rt") if file.endswith(".gz") else open(file, "r"):
+        if line[0] == "@":
+            if line[1] == "@":
+                # If provided, parse custom headers
+                headers = {h.replace("@",""): i for i, h in enumerate(line.rstrip().split("\t"))}
+                if len(headers)<2:
+                    sys.stderr.write(file + ": " + "incomplete header entries [" + line + "]\n")
+                    sys.exit(1)
+            continue
+
+        fields = line.rstrip().split("\t")
+        taxid = tax.latest(fields[headers["TAXID"]])
+        if taxid == tax.undefined_node:
+            not_found_tax.add(fields[headers["TAXID"]])
+            continue
+        readid = fields[headers["SEQUENCEID"]]
+        res[readid] = taxid
+
+        if "__NCBI_ASSEMBLY_ACCESSION" in headers and len(fields) > headers["__NCBI_ASSEMBLY_ACCESSION"]:
+            assembly[readid] = fields[headers["__NCBI_ASSEMBLY_ACCESSION"]]
+        if "__NCBI_SEQUENCE_ACCESSION" in headers and len(fields) > headers["__NCBI_SEQUENCE_ACCESSION"]:
+            sequence[readid] = fields[headers["__NCBI_SEQUENCE_ACCESSION"]]
+
+
+    if not_found_tax:
+        for t in not_found_tax:
+            sys.stderr.write(file + ": " + t + " not found in taxonomy\n")
+    return res, assembly, sequence
 
 
 if __name__ == "__main__":

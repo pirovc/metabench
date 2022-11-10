@@ -112,7 +112,7 @@ rule kraken2_classify_format:
             header_suffix=0;
         fi
 
-        grep "^C" {input.res} | awk -v header_suffix="${{header_suffix}}" 'FS="\\t"{{print substr($2,1,length($2)-header_suffix)"\\t0\\t"$3}}' >> {output.bioboxes}
+        grep "^C" {input.res} | awk -v header_suffix="${{header_suffix}}" 'FS="\\t"{{print substr($2,1,length($2)-header_suffix)"\\t"$3}}' >> {output.bioboxes}
         """
 
 # running with bracken
