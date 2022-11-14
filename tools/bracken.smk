@@ -17,7 +17,8 @@ rule bracken_build:
         args = lambda wildcards: str2args(wildcards.args)
     shell: 
         """
-        ln -s {params.kraken2db} {params.outprefix}
+        rm -rf "{params.outprefix}{wildcards.args}" # remove auto-generated folder
+        ln -s "{params.kraken2db}" "{params.outprefix}" # link kraken2 build
         {params.path}bracken-build -t {threads} {params.args} {params.fixed_args} > {log} 2>&1
         """
 
