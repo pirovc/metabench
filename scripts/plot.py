@@ -14,7 +14,7 @@ import pandas as pd
 from bokeh.io import save
 from bokeh.core.enums import MarkerType
 from bokeh.plotting import figure, output_file
-from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter,  FactorRange, MultiSelect, CustomJSHover, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, Spacer, Range1d
+from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter,  FactorRange, MultiSelect, CustomJSHover, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, CheckboxButtonGroup, Spacer, Range1d, TextInput
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.models.filters import GroupFilter, IndexFilter
 from bokeh.palettes import Category10, Category20, Colorblind, linear_palette, Turbo256
@@ -85,7 +85,6 @@ def main():
     bench_tabs = []
 
     tools = "pan,wheel_zoom,box_zoom,box_select,tap,reset,save"
-
 
     if not tables["profiling"]["evals"]["config"].empty:
         evals_tabs.append(Panel(child=plot_evals(
@@ -256,21 +255,31 @@ def plot_evals(report, tables, default_ranks, tools):
     smarkers, sfillcolor, slinecolor = define_markers(df_config.shape[0])
 
     # Hover tool for tooltips (all plots)
-    hover_tool = make_hover(cds_config, ["index", "database_arguments"])
+    hover_tool = make_hover(cds_config, ["index"])
+
+    # General widgets
+
+    select_metric = Select(
+        title="Metric:", value=init_metric, options=metrics)
+
+    select_rank = Select(
+        title="Rank:", value=init_rank, options=default_ranks)
+
+    radio_ranges = RadioButtonGroup(labels=["min-max", "0-1", "0-max"], active=0)
 
     #
     # DataTable
     #
     table_config, filter_config, widgets_config = plot_datatable(cds_config, df_config, cds_evals)
 
+
     #
     # Plot Ranks
     #
     plot_ranks = figure(title="Ranks", x_range=default_ranks,
-                        toolbar_location="above", tools=tools)
+                        toolbar_location="above", tools=tools,
+                        width=400, height=400)
 
-    select_metric_ranks = Select(
-        title="Metric:", value=init_metric, options=metrics)
     checkbox_ranks = CheckboxGroup(
         labels=default_ranks, active=list(range(len(default_ranks))))
 
@@ -289,17 +298,7 @@ def plot_evals(report, tables, default_ranks, tools):
                        line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
     plot_ranks.add_tools(hover_tool)
     plot_ranks.yaxis.axis_label = init_metric
-
-    cb_select_metric_ranks = CustomJS(
-        args=dict(cds_evals=cds_evals,
-                  filter_metric_ranks=filter_metric_ranks,
-                  yaxis=plot_ranks.yaxis[0]),
-        code="""
-        filter_metric_ranks.group = this.value;
-        yaxis.axis_label = this.value;
-        cds_evals.change.emit();
-        """)
-    select_metric_ranks.js_on_change('value', cb_select_metric_ranks)
+    plot_ranks.xaxis.major_label_orientation = "vertical"
 
     cb_checkbox_ranks = CustomJS(
         args=dict(plot_ranks=plot_ranks,
@@ -320,15 +319,12 @@ def plot_evals(report, tables, default_ranks, tools):
     # Plot Compare
     #
     plot_compare = figure(
-        title="Compare", toolbar_location="above", tools=tools)
+        title="Compare", toolbar_location="above", tools=tools,
+        width=400, height=400)
 
     select_metric_x_compare = Select(
         title="Metric (x):", value=init_metric, options=metrics)
-    select_metric_y_compare = Select(
-        title="Metric (y):", value=init_metric, options=metrics)
-    select_rank_compare = Select(
-        title="Rank:", value=init_rank, options=default_ranks)
-
+    
     filter_rank_compare = GroupFilter(column_name="rank", group=init_rank)
     filter_metric_compare = GroupFilter(
         column_name="metric", group=init_metric)
@@ -336,15 +332,14 @@ def plot_evals(report, tables, default_ranks, tools):
         filter_rank_compare, filter_metric_compare, filter_config])
 
     # Select metric for y-axis based on the stacked cds (assumes data is sorted)
-    get_metric_y = CustomJSTransform(args=dict(cds_evals=cds_evals,
-                                               select_rank_compare=select_rank_compare,
-                                               select_metric_x_compare=select_metric_x_compare,
-                                               select_metric_y_compare=select_metric_y_compare),
+    get_metric_x = CustomJSTransform(args=dict(cds_evals=cds_evals,
+                                               select_metric=select_metric,
+                                               select_metric_x_compare=select_metric_x_compare),
                                      v_func="""
         // find start position of the y-axis metric
         var st_pos = 0;
         for (let i = 0; i < xs.length; i++) {
-            if(xs[i]==select_metric_y_compare.value){
+            if(xs[i]==select_metric_x_compare.value){
                 st_pos=i;
                 break;
             }
@@ -354,7 +349,7 @@ def plot_evals(report, tables, default_ranks, tools):
         const y = new Float64Array(xs.length);
         var x = 0;
         for (let i = 0; i < xs.length; i++) {
-            if(xs[i]==select_metric_x_compare.value){
+            if(xs[i]==select_metric.value){
                 y[i] = cds_evals.data["value"][st_pos+x];
                 x++;
             }else{
@@ -365,7 +360,7 @@ def plot_evals(report, tables, default_ranks, tools):
     """)
 
     plot_compare.scatter(x="value",
-                         y=transform("metric", get_metric_y),
+                         y=transform("metric", get_metric_x),
                          source=cds_evals,
                          view=view_compare,
                          size=12,
@@ -378,35 +373,15 @@ def plot_evals(report, tables, default_ranks, tools):
     plot_compare.xaxis.axis_label = init_metric
     plot_compare.yaxis.axis_label = init_metric
 
-    cb_select_rank_compare = CustomJS(
-        args=dict(cds_evals=cds_evals,
-                  filter_rank_compare=filter_rank_compare),
-        code="""
-        filter_rank_compare.group = this.value;
-        cds_evals.change.emit();
-        """)
-    select_rank_compare.js_on_change('value', cb_select_rank_compare)
-
-    cb_select_metric_x_compare = CustomJS(
-        args=dict(cds_evals=cds_evals,
-                  filter_metric_compare=filter_metric_compare,
-                  yaxis=plot_compare.yaxis[0]),
-        code="""
-        filter_metric_compare.group = this.value;
-        yaxis.axis_label = this.value;
-        cds_evals.change.emit();
-        """)
-    select_metric_x_compare.js_on_change("value", cb_select_metric_x_compare)
-
     # Only triggers cds to apply transform on y-axis
-    cb_select_metric_y_compare = CustomJS(
+    cb_select_metric_x_compare = CustomJS(
         args=dict(cds_evals=cds_evals,
                   xaxis=plot_compare.xaxis[0]),
         code="""
         xaxis.axis_label = this.value;
         cds_evals.change.emit();
         """)
-    select_metric_y_compare.js_on_change('value', cb_select_metric_y_compare)
+    select_metric_x_compare.js_on_change('value', cb_select_metric_x_compare)
 
     #
     # Plot Group
@@ -414,15 +389,14 @@ def plot_evals(report, tables, default_ranks, tools):
     plot_groups = figure(title="Groups",
                          x_range=FactorRange(
                              factors=list(cds_config.data["name"])),
+                         #y_range=Range1d(start=0),
                          toolbar_location="above",
-                         tools=tools)
+                         tools=tools,
+                         width=800, height=600)
 
-    select_metric_groups = Select(
-        title="Metric:", value=init_metric, options=metrics)
-    select_rank_groups = Select(
-        title="Rank:", value=init_rank, options=default_ranks)
     multiselect_groups = MultiSelect(
-        value=["name"], options=df_config.columns.to_list())
+        value=["name"], options=df_config.columns.to_list(), size=7)
+    toggle_label_groups = CheckboxGroup(labels=["Hide samples labels"], active=[])
 
     filter_rank_groups = GroupFilter(column_name="rank", group=init_rank)
     filter_metric_groups = GroupFilter(column_name="metric", group=init_metric)
@@ -463,25 +437,6 @@ def plot_evals(report, tables, default_ranks, tools):
     plot_groups.xaxis.major_label_orientation = "vertical"
     plot_groups.yaxis.axis_label = init_metric
 
-    cb_select_rank_groups = CustomJS(
-        args=dict(cds_evals=cds_evals, filter_rank_groups=filter_rank_groups),
-        code="""
-        filter_rank_groups.group = this.value;
-        cds_evals.change.emit();
-        """)
-    select_rank_groups.js_on_change('value', cb_select_rank_groups)
-
-    cb_select_metric_groups = CustomJS(
-        args=dict(cds_evals=cds_evals,
-                  filter_metric_groups=filter_metric_groups,
-                  yaxis=plot_groups.yaxis[0]),
-        code="""
-        filter_metric_groups.group = this.value;
-        yaxis.axis_label = this.value;
-        cds_evals.change.emit();
-        """)
-    select_metric_groups.js_on_change('value', cb_select_metric_groups)
-
     cb_multiselect_groups = CustomJS(
         args=dict(cds_config=cds_config,
                   plot_groups=plot_groups,
@@ -499,18 +454,111 @@ def plot_evals(report, tables, default_ranks, tools):
         plot_groups.x_range.factors = sorted_factors;
         """)
     multiselect_groups.js_on_change('value', cb_multiselect_groups)
+
+
+    cb_toggle_label_groups = CustomJS(
+        args=dict(xaxis=plot_groups.xaxis[0]),
+        code='''
+        if(this.active.includes(0)){
+            xaxis.major_label_text_font_size = "0px";
+            xaxis.major_tick_line_color=null;
+        }else{
+            xaxis.major_label_text_font_size = "10px";
+            xaxis.major_tick_line_color="black";
+        }
+        ''')
+    toggle_label_groups.js_on_click(cb_toggle_label_groups)
+
     # trigger changes on checkboxes table
     cds_config.selected.js_on_change('indices', cb_multiselect_groups)
 
+    cb_radio_ranges = CustomJS(
+        args=dict(radio_ranges=radio_ranges,
+                  cds_evals=cds_evals,
+                  y_range_groups=plot_groups.y_range,
+                  y_range_ranks=plot_ranks.y_range,
+                  y_range_compare=plot_compare.y_range,
+                  x_range_compare=plot_compare.x_range),
+        code="""
+        if (radio_ranges.active==0){
+            // auto
+            //y_range_groups.start = NaN;
+            //y_range_groups.end = NaN;
+            cds_evals.change.emit();
+        }else if(radio_ranges.active==1){
+            // 0-1
+            y_range_groups.start = 0;
+            y_range_groups.end = 1;
+
+            y_range_ranks.start = 0;
+            y_range_ranks.end = 1;
+
+            y_range_compare.start = 0;
+            y_range_compare.end = 1;
+            x_range_compare.start = 0;
+            x_range_compare.end = 1;
+        }else if(radio_ranges.active==2){
+            // 0-max
+            y_range_groups.start = 0;
+
+            y_range_ranks.start = 0;
+
+            y_range_compare.start = 0;
+            x_range_compare.start = 0;
+        }
+        """)
+    radio_ranges.js_on_click(cb_radio_ranges)
+
+    cb_select_metric = CustomJS(
+        args=dict(cds_evals=cds_evals,
+                  filter_metric_ranks=filter_metric_ranks,
+                  filter_metric_compare=filter_metric_compare,
+                  filter_metric_groups=filter_metric_groups,
+                  yaxis_ranks=plot_ranks.yaxis[0],
+                  yaxis_compare=plot_compare.yaxis[0],
+                  yaxis_groups=plot_groups.yaxis[0]),
+
+        code="""
+        filter_metric_ranks.group = this.value;
+        yaxis_ranks.axis_label = this.value;
+
+        filter_metric_compare.group = this.value;
+        yaxis_compare.axis_label = this.value;
+
+        filter_metric_groups.group = this.value;
+        yaxis_groups.axis_label = this.value;
+
+        cds_evals.change.emit();
+
+        //console.log(Bokeh.documents[0].get_model_by_id('my_select'))
+        //radio_ranges.trigger_event(({"event_name": "click"}))
+        """)
+    select_metric.js_on_change('value', cb_select_metric)
+
+    cb_select_rank = CustomJS(
+        args=dict(cds_evals=cds_evals,
+                  filter_rank_compare=filter_rank_compare,
+                  filter_rank_groups=filter_rank_groups),
+        code="""
+        filter_rank_compare.group = this.value;
+        filter_rank_groups.group = this.value;
+        cds_evals.change.emit();
+        """)
+    select_rank.js_on_change('value', cb_select_rank)
 
     layout = column([row(table_config, column(*widgets_config)),
-                     row([
-                         column([plot_ranks, select_metric_ranks, checkbox_ranks]),
-                         column(
-                             [plot_compare, select_rank_compare, select_metric_x_compare, select_metric_y_compare]),
-                         column([plot_groups, select_rank_groups, select_metric_groups, multiselect_groups])]
-                         )
-                     ])
+                     row([plot_groups, column([row([
+                                                column([select_metric, select_rank, radio_ranges]),
+                                                multiselect_groups,
+                                                toggle_label_groups
+                                               ]),
+                                               row([
+                                                column([plot_compare, select_metric_x_compare]),
+                                                plot_ranks,
+                                                checkbox_ranks])])
+                                               ])
+                    ])
+
 
     return layout
 
@@ -615,7 +663,7 @@ def plot_datatable(cds_config, df_config, cds_data):
                                       for field in df_config.columns],
                              selectable="checkbox",
                              width=1200,
-                             height=300)
+                             height=150)
     
 
     choices = []
@@ -624,34 +672,56 @@ def plot_datatable(cds_config, df_config, cds_data):
             if u:
                 choices.append((h+"|"+u, u + " [" + h + "]"))
 
-    multichoice_config = MultiChoice(title="Select", options=choices)
+    multichoice_config = MultiChoice(options=choices, placeholder="Fixed filter")
+    textinput_config = TextInput(placeholder="Partial filter e.g. database:abfv|sample:cami")
     radiobutton_config = RadioButtonGroup(labels=["AND", "OR"], active=0)
-    button_config = Button(label="Apply", button_type="default")
-    widgets_config.extend([multichoice_config, radiobutton_config, button_config])
+    button_config = Button(label="Apply", button_type="success")
+    widgets_config.extend([multichoice_config, textinput_config, radiobutton_config, button_config])
 
     filter_config = IndexFilter(indices=[])
 
     cb_button_config = CustomJS(
         args=dict(cds_config=cds_config,
                   multichoice_config=multichoice_config,
+                  textinput_config=textinput_config,
                   radiobutton_config=radiobutton_config),
         code="""
         var selected_indices = [];
-        for (var i = 0; i < cds_config.length; i++) {
+        
+        if (multichoice_config.value.length > 0 || textinput_config.value.length > 0){
+            for (var i = 0; i < cds_config.length; i++) {
 
-            if (multichoice_config.value.length > 0 ){
                 var found = 0;
                 for (var m=0; m < multichoice_config.value.length; ++m){
-                    const val = multichoice_config.value[m].split("|");
-                    if(cds_config.data[val[0]][i]==val[1]){
+                    const val_mc = multichoice_config.value[m].split("|");
+                    if(cds_config.data[val_mc[0]][i]==val_mc[1]){
                         found++;
                     }
                 }
-                if (found==0 || (radiobutton_config.active==0 && found<multichoice_config.value.length)) {
+
+                var text_filters_len = 0;
+                if(textinput_config.value.length > 0){
+                    const text_filters = textinput_config.value.split("|");
+                    text_filters_len = text_filters.length;
+                    for(var t = 0; t < text_filters.length; t++) {
+                        const val_text = text_filters[t].split(":");
+                        if(val_text.length==2 && val_text[0] in cds_config.data){
+
+                            if(cds_config.data[val_text[0]][i].indexOf(val_text[1]) > -1){
+                                found++;
+                                console.log(val_text);
+                            }
+                        }
+
+                    }
+                }
+
+                if (found==0 || (radiobutton_config.active==0 && found<multichoice_config.value.length+text_filters_len)) {
                     continue;
                 }
-            }
+
             selected_indices.push(i);
+            }
         }
         cds_config.selected.indices = selected_indices;
         """)
