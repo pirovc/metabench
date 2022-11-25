@@ -19,26 +19,45 @@ def input_all():
                                 # define path to output
                                 path = tool + "/" + vers + "/" + samp + "/" + dtbs + "/" + dtbs_args + "/"
                                 # build product of all arguments (single or range)
-                                for args in args_product(config["run"][tool][vers]["args"]):
-                                    out.append(path + join_args(args))
+                                for binning_args in args_product(config["run"][tool][vers]["binning_args"]):
+                                    out.append(path + join_args(binning_args) + ".binning")
+                                    for profiling_args in args_product(config["run"][tool][vers]["profiling_args"]):
+                                        out.append(path + join_args(binning_args) + "/" + join_args(profiling_args) + ".profiling")
     return out
 
 rule all:
     input:
-        expand("{i}.{ext}", i=input_all(), ext=["binning.bioboxes", "binning.bench.json", "profiling.bioboxes", "profiling.bench.json"])
+        expand("{i}.{ext}", i=input_all(), ext=["bioboxes", "bench.json"])
 
-rule bench:
+rule bench_binning:
     input:
-        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.{type}.bench.tsv"
+        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv"
     output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.{type}.bench.json"
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.json"
     params:
         config = lambda wildcards: {"tool": wildcards.tool,
                                     "version": wildcards.vers,
                                     "sample": wildcards.samp,
                                     "database": wildcards.dtbs,
                                     "database_arguments": str2args(wildcards.dtbs_args),
-                                    "arguments": str2args(wildcards.args),
+                                    "binning_arguments": str2args(wildcards.b_args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, report=wildcards.type, category="benchmark", config = params.config), output.json)
+        json_write(json_benchmark(input.bench, report="binning", category="benchmark", config = params.config), output.json)
+
+rule bench_profiling:
+    input:
+        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv"
+    output:
+        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.json"
+    params:
+        config = lambda wildcards: {"tool": wildcards.tool,
+                                    "version": wildcards.vers,
+                                    "sample": wildcards.samp,
+                                    "database": wildcards.dtbs,
+                                    "database_arguments": str2args(wildcards.dtbs_args),
+                                    "binning_arguments": str2args(wildcards.b_args),
+                                    "profiling_arguments": str2args(wildcards.p_args),
+                                    "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
+    run:
+        json_write(json_benchmark(input.bench, report="profiling", category="benchmark", config = params.config), output.json)

@@ -1,10 +1,10 @@
 rule bracken_build:
     output:
-        "bracken/{vers}/{dtbs}/{args}/database.kraken"
+        "bracken/{vers}/{dtbs}/{dtbs_args}/database.kraken"
     benchmark:
-        repeat("bracken/{vers}/{dtbs}/{args}.build.bench.tsv", config["repeat"])
+        repeat("bracken/{vers}/{dtbs}/{dtbs_args}.build.bench.tsv", config["repeat"])
     log:
-        "bracken/{vers}/{dtbs}/{args}.build.log"
+        "bracken/{vers}/{dtbs}/{dtbs_args}.build.log"
     threads:
         config["threads"]
     conda:
@@ -14,33 +14,33 @@ rule bracken_build:
         outprefix = "bracken/{vers}/{dtbs}/", #no args, to link from kraken2
         fixed_args = lambda wildcards: dict2args(config["run"]["bracken"][wildcards.vers][wildcards.dtbs]["fixed_args"]),
         kraken2db = lambda wildcards: config["run"]["bracken"][wildcards.vers][wildcards.dtbs]["fixed_args"]["-d"],
-        args = lambda wildcards: str2args(wildcards.args)
+        args = lambda wildcards: str2args(wildcards.dtbs_args)
     shell: 
         """
-        rm -rf "{params.outprefix}{wildcards.args}" # remove auto-generated folder
+        rm -rf "{params.outprefix}{wildcards.dtbs_args}" # remove auto-generated folder
         ln -s "{params.kraken2db}" "{params.outprefix}" # link kraken2 build
-        {params.path}bracken-build -t {threads} {params.args} {params.fixed_args} > {log} 2>&1
+        {params.path}bracken-build -t {threads} {params.dtbs_args} {params.fixed_args} > {log} 2>&1
         """
 
 rule bracken_build_size:
     input:
-        "bracken/{vers}/{dtbs}/{args}/database.kraken"
+        "bracken/{vers}/{dtbs}/{dtbs_args}/database.kraken"
     output:
-        "bracken/{vers}/{dtbs}/{args}.build.size.tsv"
+        "bracken/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
         "du --block-size=1 --dereference {input} > {output}"  # output in bytes
 
 
 rule bracken_profiling:
     input:
-        rep = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep"
+        rep = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep"
     output:
-        bra = temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.bracken"),
-        out = temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.out")
+        bra = temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.bracken"),
+        out = temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.out")
     log:
-        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.log"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.log"
     benchmark:
-        repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bench.tsv", config["repeat"])
+        repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
     conda:
         srcdir("../envs/bracken.yaml")
     params:
@@ -52,11 +52,11 @@ rule bracken_profiling:
 
 rule bracken_profiling_format:
     input:
-        bra = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.bracken"
+        bra = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.bracken"
     output:
-        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bioboxes"
+        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
     log:
-        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.profiling.bioboxes.log"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes.log"
     conda:
         srcdir("../envs/evals.yaml")
     params:

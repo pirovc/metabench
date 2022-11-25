@@ -33,7 +33,7 @@ rule bench:
         config = lambda wildcards: {"tool": wildcards.tool,
                                     "version": wildcards.vers,
                                     "database": wildcards.dtbs,
-                                    "arguments": str2args(wildcards.args),
+                                    "database_arguments": str2args(wildcards.args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}
     run:
         out_json = json_benchmark(input.bench, report="build", category="benchmark", config=params.config)

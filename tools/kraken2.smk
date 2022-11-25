@@ -1,16 +1,16 @@
 rule kraken2_build:
     output:
-        db1="kraken2/{vers}/{dtbs}/{args}/hash.k2d",
-        db2="kraken2/{vers}/{dtbs}/{args}/opts.k2d",
-        db3="kraken2/{vers}/{dtbs}/{args}/taxo.k2d",
-        db4="kraken2/{vers}/{dtbs}/{args}/taxonomy/nodes.dmp",
-        db5="kraken2/{vers}/{dtbs}/{args}/taxonomy/names.dmp",
-        fasta=temp("kraken2/{vers}/{dtbs}/{args}/input.fasta"),
-        accession2taxid=temp("kraken2/{vers}/{dtbs}/{args}/taxonomy/kraken2.accession2taxid")
+        db1="kraken2/{vers}/{dtbs}/{dtbs_args}/hash.k2d",
+        db2="kraken2/{vers}/{dtbs}/{dtbs_args}/opts.k2d",
+        db3="kraken2/{vers}/{dtbs}/{dtbs_args}/taxo.k2d",
+        db4="kraken2/{vers}/{dtbs}/{dtbs_args}/taxonomy/nodes.dmp",
+        db5="kraken2/{vers}/{dtbs}/{dtbs_args}/taxonomy/names.dmp",
+        fasta=temp("kraken2/{vers}/{dtbs}/{dtbs_args}/input.fasta"),
+        accession2taxid=temp("kraken2/{vers}/{dtbs}/{dtbs_args}/taxonomy/kraken2.accession2taxid")
     benchmark:
-        repeat("kraken2/{vers}/{dtbs}/{args}.build.bench.tsv", config["repeat"])
+        repeat("kraken2/{vers}/{dtbs}/{dtbs_args}.build.bench.tsv", config["repeat"])
     log:
-        "kraken2/{vers}/{dtbs}/{args}.build.log"
+        "kraken2/{vers}/{dtbs}/{dtbs_args}.build.log"
     threads:
         config["threads"]
     conda:
@@ -18,10 +18,10 @@ rule kraken2_build:
     priority: 1  # to run before bracken
     params:
         path = lambda wildcards: config["tools"]["kraken2"][wildcards.vers],
-        outprefix = "kraken2/{vers}/{dtbs}/{args}/",
+        outprefix = "kraken2/{vers}/{dtbs}/{dtbs_args}/",
         db = lambda wildcards: config["dbs"][wildcards.dtbs],
         fixed_args = lambda wildcards: dict2args(config["run"]["kraken2"][wildcards.vers][wildcards.dtbs]["fixed_args"]),
-        args = lambda wildcards: str2args(wildcards.args)
+        args = lambda wildcards: str2args(wildcards.dtbs_args)
     shell: 
         """
         #mkdir -p "{params.outprefix}taxonomy"
@@ -38,13 +38,13 @@ rule kraken2_build:
 
 rule kraken2_build_size:
     input:
-        "kraken2/{vers}/{dtbs}/{args}/hash.k2d",
-        "kraken2/{vers}/{dtbs}/{args}/opts.k2d",
-        "kraken2/{vers}/{dtbs}/{args}/taxo.k2d",
-        "kraken2/{vers}/{dtbs}/{args}/taxonomy/nodes.dmp",
-        "kraken2/{vers}/{dtbs}/{args}/taxonomy/names.dmp"
+        "kraken2/{vers}/{dtbs}/{dtbs_args}/hash.k2d",
+        "kraken2/{vers}/{dtbs}/{dtbs_args}/opts.k2d",
+        "kraken2/{vers}/{dtbs}/{dtbs_args}/taxo.k2d",
+        "kraken2/{vers}/{dtbs}/{dtbs_args}/taxonomy/nodes.dmp",
+        "kraken2/{vers}/{dtbs}/{dtbs_args}/taxonomy/names.dmp"
     output:
-        "kraken2/{vers}/{dtbs}/{args}.build.size.tsv"
+        "kraken2/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
         "du --block-size=1 {input} > {output}"  # output in bytes
 
@@ -52,12 +52,12 @@ rule kraken2_classify:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
-        res=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res"),
-        rep=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.rep")
+        res=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.res"),
+        rep=temp("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep")
     benchmark:
-        repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bench.tsv", config["repeat"])
+        repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])
     log:
-        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.log"
+        "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.log"
     threads:
         config["threads"]
     conda:
@@ -67,7 +67,7 @@ rule kraken2_classify:
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/",
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["kraken2"][wildcards.vers]["fixed_args"]),
-        args = lambda wildcards: str2args(wildcards.args)
+        args = lambda wildcards: str2args(wildcards.b_args)
     shell:
         """
         if [[ ! -z "{params.path}" ]]; then
@@ -94,9 +94,9 @@ rule kraken2_classify:
 
 rule kraken2_classify_format:
     input:
-        res = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.res",
+        res = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.res",
     output:
-        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{args}.binning.bioboxes"
+        bioboxes = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
     params:
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
         header = lambda wildcards: header_bioboxes_binning("kraken2", wildcards)
