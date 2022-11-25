@@ -308,13 +308,6 @@ def plot_evals(report, tables, default_ranks, tools):
         """)
     checkbox_ranks.js_on_click(cb_checkbox_ranks)
 
-    callback = CustomJS(
-        args=dict(),
-        code="""
-        console.log("change")
-        """)
-    plot_ranks.x_range.js_on_change('end', callback)
-
     #
     # Plot Compare
     #
@@ -397,6 +390,7 @@ def plot_evals(report, tables, default_ranks, tools):
     multiselect_groups = MultiSelect(
         value=["name"], options=df_config.columns.to_list(), size=7)
     toggle_label_groups = CheckboxGroup(labels=["Hide samples labels"], active=[])
+    sort_groups = Select(title="Sort:", value="name", options=df_config.columns.to_list())
 
     filter_rank_groups = GroupFilter(column_name="rank", group=init_rank)
     filter_metric_groups = GroupFilter(column_name="metric", group=init_metric)
@@ -440,21 +434,50 @@ def plot_evals(report, tables, default_ranks, tools):
     cb_multiselect_groups = CustomJS(
         args=dict(cds_config=cds_config,
                   plot_groups=plot_groups,
-                  multiselect_groups=multiselect_groups),
+                  multiselect_groups=multiselect_groups,
+                  sort_groups=sort_groups),
         code="""
-        var factors = new Set();
+
+        // build index with combination of selected params
+        var factors_set = new Set();
         for(let i = 0; i < cds_config.selected.indices.length; i++){
             var group = "|";
             for(let v = 0; v < multiselect_groups.value.length; v++){
                 group += cds_config.data[multiselect_groups.value[v]][cds_config.selected.indices[i]] + "|"
             }
-            factors.add(group);
+            factors_set.add(group);
         }
-        var sorted_factors = [...factors].sort();
+        var factors = [...factors_set];
+
+        
+        var sorted_factors = new Array();
+        const index_sort = multiselect_groups.value.indexOf(sort_groups.value);
+        // if sort by specific param (should be selected)
+        if(index_sort > -1){
+            var order = new Array();
+            for (var i = 0; i < factors.length; ++i){
+                order.push(factors[i].split("|")[index_sort+1]);
+            }
+
+            var idx = new Array(order.length);
+            for (var i = 0; i < idx.length; ++i){
+                idx[i] = i;
+            }
+            idx.sort((a, b) => order[a].localeCompare(order[b]));
+
+            for (var i = 0; i < idx.length; ++i){
+                sorted_factors.push(factors[idx[i]]);
+            }
+
+        }else{
+            // default sort
+            sorted_factors = factors.sort();
+        }
+
         plot_groups.x_range.factors = sorted_factors;
         """)
     multiselect_groups.js_on_change('value', cb_multiselect_groups)
-
+    sort_groups.js_on_change('value', cb_multiselect_groups)
 
     cb_toggle_label_groups = CustomJS(
         args=dict(xaxis=plot_groups.xaxis[0]),
@@ -546,19 +569,24 @@ def plot_evals(report, tables, default_ranks, tools):
         """)
     select_rank.js_on_change('value', cb_select_rank)
 
-    layout = column([row(table_config, column(*widgets_config)),
-                     row([plot_groups, column([row([
-                                                column([select_metric, select_rank, radio_ranges]),
-                                                multiselect_groups,
-                                                toggle_label_groups
-                                               ]),
-                                               row([
-                                                column([plot_compare, select_metric_x_compare]),
-                                                plot_ranks,
-                                                checkbox_ranks])])
-                                               ])
-                    ])
 
+
+    layout = column([row(table_config, column(*widgets_config)),
+                     row([plot_groups, 
+                          column([select_metric,
+                                  select_rank,
+                                  radio_ranges,
+                                  multiselect_groups,
+                                  toggle_label_groups,
+                                  sort_groups
+                                 ]),
+                          column([plot_compare,
+                                  select_metric_x_compare
+                                 ]),
+                          column([plot_ranks,
+                                  checkbox_ranks
+                                 ]),
+                    ])])
 
     return layout
 
@@ -706,10 +734,8 @@ def plot_datatable(cds_config, df_config, cds_data):
                     for(var t = 0; t < text_filters.length; t++) {
                         const val_text = text_filters[t].split(":");
                         if(val_text.length==2 && val_text[0] in cds_config.data){
-
                             if(cds_config.data[val_text[0]][i].indexOf(val_text[1]) > -1){
                                 found++;
-                                console.log(val_text);
                             }
                         }
 
