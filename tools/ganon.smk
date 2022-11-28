@@ -49,7 +49,7 @@ rule ganon_classify:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
         lca=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.lca"),
-        rep=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep"),
+        rep="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
         tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tre")
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])

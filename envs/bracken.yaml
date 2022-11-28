@@ -1,6 +1,2 @@
-channels:
- - defaults
- - bioconda
- - conda-forge
 dependencies:
- - bracken=2.7
+ - bracken=2.8

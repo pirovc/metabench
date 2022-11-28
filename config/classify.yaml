@@ -1,45 +1,62 @@
-workdir: "/home/pirov/data/metabench_data/results/"
-threads: 8
+workdir: "/home/mi/pirov/bigdata/data/metabench_data/results/"
+threads: 30
 repeat: 1
 
 tools:
   ganon:
-    "1.2.0": ""
-    "1.3.0-dev": "/home/pirov/code/ganon/"
+    "1.3.0-dev": "/home/mi/pirov/bigdata/code/ganon/"
   kraken2:
     "2.1.2": ""
 
 samples:
   "mende10.1M":
-    fq1: "/home/pirov/data/reads/mende/illumina_10species.1M_0.1.fq.gz"
-    fq2: "/home/pirov/data/reads/mende/illumina_10species.1M_0.2.fq.gz"
+    fq1: "/home/mi/pirov/bigdata/data/reads/mende/illumina_10species.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/mende/illumina_10species.1M_0.2.fq.gz"
   "mende100.1M":
-    fq1: "/home/pirov/data/reads/mende/illumina_100species.1M_0.1.fq.gz"
-    fq2: "/home/pirov/data/reads/mende/illumina_100species.1M_0.2.fq.gz"
+    fq1: "/home/mi/pirov/bigdata/data/reads/mende/illumina_100species.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/mende/illumina_100species.1M_0.2.fq.gz"
   "mende400.1M":
-    fq1: "/home/pirov/data/reads/mende/illumina_400species.1M_0.1.fq.gz"
-    fq2: "/home/pirov/data/reads/mende/illumina_400species.1M_0.2.fq.gz"
+    fq1: "/home/mi/pirov/bigdata/data/reads/mende/illumina_400species.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/mende/illumina_400species.1M_0.2.fq.gz"
+  "microba_ani95_cLOW_stTrue_r0.1M":
+    fq1: "/home/mi/pirov/bigdata/data/reads/microba/ani95_cLOW_stTrue_r0.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/microba/ani95_cLOW_stTrue_r0.1M_0.2.fq.gz"
+  "microba_ani97_cHIGH_stTrue_r0.1M":
+    fq1: "/home/mi/pirov/bigdata/data/reads/microba/ani97_cHIGH_stTrue_r0.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/microba/ani97_cHIGH_stTrue_r0.1M_0.2.fq.gz"
+  "microba_ani100_cHIGH_stTrue_r0.1M":
+    fq1: "/home/mi/pirov/bigdata/data/reads/microba/ani100_cHIGH_stTrue_r0.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/microba/ani100_cHIGH_stTrue_r0.1M_0.2.fq.gz"
+  "cami2_marine_0.1M":
+    fq1: "/home/mi/pirov/bigdata/data/reads/cami2/marine/0.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/cami2/marine/0.1M_0.2.fq.gz"
+  "cami2_mouse_0.1M":
+    fq1: "/home/mi/pirov/bigdata/data/reads/cami2/mouse/0.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/cami2/mouse/0.1M_0.2.fq.gz"
+  "cami2_plant_0.1M":
+    fq1: "/home/mi/pirov/bigdata/data/reads/cami2/plant/0.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/cami2/plant/0.1M_0.2.fq.gz"
+  "cami2_strain_0.1M":
+    fq1: "/home/mi/pirov/bigdata/data/reads/cami2/strain/0.1M_0.1.fq.gz"
+    fq2: "/home/mi/pirov/bigdata/data/reads/cami2/strain/0.1M_0.2.fq.gz"
 
 run:
   ganon:
-    # "1.2.0":
-    #   dbs: 
-    #     "arc_bac_rs_cg_t1s": "/home/pirov/data/metabench_data/databases/ganon/1.2.0/arc_bac_rs_cg_t1s/"
-    #   fixed_args:
-    #   args:
     "1.3.0-dev":
       dbs: 
-        "arc_bac_rs_cg_t1s": "/home/pirov/data/metabench_data/databases/ganon/1.3.0-dev/arc_bac_rs_cg_t1s/"
+        "abfv_cg_t1a": "/home/mi/pirov/bigdata/data/metabench_data/databases/ganon/1.3.0-dev/abfv_cg_t1a/"
+        "abfv_rs_repgen": "/home/mi/pirov/bigdata/data/metabench_data/databases/ganon/1.3.0-dev/abfv_rs_repgen/"
       fixed_args:
-        "--ganon-path": "/home/pirov/code/ganon/"
+        "--ganon-path": "/home/mi/pirov/bigdata/code/ganon/"
       args:
-        "--rel-cutoff": [0.0, 0.3, 0.1]
-        "--rel-filter": [0, 0.2, 0.1]
+        "--rel-cutoff": [0, 0.5, 0.1]
+        "--rel-filter": [0, 0.5, 0.1]
         
   kraken2:
     "2.1.2":
       dbs: 
-        "arc_bac_rs_cg_t1s": "/home/pirov/data/metabench_data/databases/kraken2/2.1.2/arc_bac_rs_cg_t1s/"
+        "abfv_cg_t1a": "/home/mi/pirov/bigdata/data/metabench_data/databases/kraken2/2.1.2/abfv_cg_t1a/"
+        "abfv_rs_repgen": "/home/mi/pirov/bigdata/data/metabench_data/databases/kraken2/2.1.2/abfv_rs_repgen/"
       fixed_args:
       args:
 
@@ -51,3 +68,4 @@ ranks_profiling:
   - family
   - genus
   - species
+  - assembly

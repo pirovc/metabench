@@ -1,20 +1,41 @@
-workdir: "/home/pirov/data/metabench_data/results/"
-threads: 8
+workdir: "/home/mi/pirov/bigdata/data/metabench_data/results/"
+threads: 30
 
 samples:
   "mende10.1M":
-    "binning": "/home/pirov/data/reads/mende/illumina_10species.1M.binning.bioboxes.gz"
-    "profiling": "/home/pirov/data/reads/mende/illumina_10species.profile.bioboxes"
+    "binning": "/home/mi/pirov/bigdata/data/reads/mende/illumina_10species.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/mende/illumina_10species.profile.bioboxes"
   "mende100.1M":
-    "binning": "/home/pirov/data/reads/mende/illumina_100species.1M.binning.bioboxes.gz"
-    "profiling": "/home/pirov/data/reads/mende/illumina_100species.profile.bioboxes"
+    "binning": "/home/mi/pirov/bigdata/data/reads/mende/illumina_100species.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/mende/illumina_100species.profile.bioboxes"
   "mende400.1M":
-    "binning": "/home/pirov/data/reads/mende/illumina_400species.1M.binning.bioboxes.gz"
-    "profiling": "/home/pirov/data/reads/mende/illumina_400species.profile.bioboxes"
+    "binning": "/home/mi/pirov/bigdata/data/reads/mende/illumina_400species.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/mende/illumina_400species.profile.bioboxes"
+  "microba_ani95_cLOW_stTrue_r0.1M":
+    "binning": "/home/mi/pirov/bigdata/data/reads/microba/ani95_cLOW_stTrue_r0_ncbi.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/microba/ani95_cLOW_stTrue_r0_ncbi.profiling.bioboxes"
+  "microba_ani97_cHIGH_stTrue_r0.1M":
+    "binning": "/home/mi/pirov/bigdata/data/reads/microba/ani97_cHIGH_stTrue_r0_ncbi.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/microba/ani97_cHIGH_stTrue_r0_ncbi.profiling.bioboxes"
+  "microba_ani100_cHIGH_stTrue_r0.1M":
+    "binning": "/home/mi/pirov/bigdata/data/reads/microba/ani100_cHIGH_stTrue_r0_ncbi.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/microba/ani100_cHIGH_stTrue_r0_ncbi.profiling.bioboxes"
+  "cami2_marine_0.1M":
+    "binning": "/home/mi/pirov/bigdata/data/reads/cami2/marine/0.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/cami2/marine/0.profiling.bioboxes"
+  "cami2_mouse_0.1M":
+    "binning": "/home/mi/pirov/bigdata/data/reads/cami2/mouse/0.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/cami2/mouse/0.profiling.bioboxes"
+  "cami2_plant_0.1M":
+    "binning": "/home/mi/pirov/bigdata/data/reads/cami2/plant/0.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/cami2/plant/0.profiling.bioboxes"
+  "cami2_strain_0.1M":
+    "binning": "/home/mi/pirov/bigdata/data/reads/cami2/strain/0.1M.binning.bioboxes.gz"
+    "profiling": "/home/mi/pirov/bigdata/data/reads/cami2/strain/0.profiling.bioboxes"
 
 dbs:
-  #"arc_cg_rs": "/home/pirov/code/metabench/databases/ganon/1.2.0/arc_cg_rs/--kmer-size=19_--window-size=35/ganon_db.tax"
-  "arc_bac_rs_cg_t1s": "/home/pirov/data/metabench_data/databases/ganon/1.2.0/arc_bac_rs_cg_t1s/--level=species/ganon_db.tax"
+  "abfv_cg_t1a": "/home/mi/pirov/bigdata/data/metabench_data/databases/ganon/1.3.0-dev/abfv_cg_t1a/--level=assembly_--kmer-size=19_--window-size=31/ganon_db.tax" 
+  "abfv_rs_repgen": "/home/mi/pirov/bigdata/data/metabench_data/databases/ganon/1.3.0-dev/abfv_rs_repgen/--level=assembly_--kmer-size=19_--window-size=31/ganon_db.tax"
 
 ranks:
   - superkingdom
@@ -26,13 +47,10 @@ ranks:
   - species
 
 taxonomy: "ncbi"
-taxonomy_files: "/home/pirov/data/abfv_rs_cg_t3s/20220915/taxdump.tar.gz"
+taxonomy_files: "/home/mi/pirov/bigdata/data/abfv/20221011/taxdump.tar.gz" 
 
 threhsold_profiling:
   - 0
   - 0.01
+  - 0.05
   - 0.1
-  - 0.5
-  - 1
-
-

@@ -6,7 +6,7 @@ rule kraken2_build:
         db4="kraken2/{vers}/{dtbs}/{dtbs_args}/taxonomy/nodes.dmp",
         db5="kraken2/{vers}/{dtbs}/{dtbs_args}/taxonomy/names.dmp",
         fasta=temp("kraken2/{vers}/{dtbs}/{dtbs_args}/input.fasta"),
-        accession2taxid=temp("kraken2/{vers}/{dtbs}/{dtbs_args}/taxonomy/kraken2.accession2taxid")
+        #accession2taxid=temp("kraken2/{vers}/{dtbs}/{args}/taxonomy/kraken2.accession2taxid")
     benchmark:
         repeat("kraken2/{vers}/{dtbs}/{dtbs_args}.build.bench.tsv", config["repeat"])
     log:
@@ -24,10 +24,6 @@ rule kraken2_build:
         args = lambda wildcards: str2args(wildcards.dtbs_args)
     shell: 
         """
-        #mkdir -p "{params.outprefix}taxonomy"
-        #mkdir -p "{params.outprefix}library"
-        #tar xf {params.db[taxonomy_files]} -C {params.outprefix}taxonomy/ nodes.dmp names.dmp > {log} 2>&1
-        #awk 'BEGIN {{FS="\\t";OFS="\\t"; print "accession","accession.version","taxid","gi"}}{{ split($4,acc,"."); print acc[1],$4,$6,"0" }}' {params.db[details]} > {output.accession2taxid} 2>> {log}
         # Kraken2
         find {params.db[folder]} -name *{params.db[extension]} | xargs zcat > {output.fasta} 2>> {log}
         {params.path}kraken2-build --db {params.outprefix} --no-masking --add-to-library {output.fasta} >> {log} 2>&1
