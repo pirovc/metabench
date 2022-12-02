@@ -19,7 +19,7 @@ rule bracken_build:
         """
         rm -rf "{params.outprefix}{wildcards.dtbs_args}" # remove auto-generated folder
         ln -s "{params.kraken2db}" "{params.outprefix}" # link kraken2 build
-        {params.path}bracken-build -t {threads} {params.dtbs_args} {params.fixed_args} > {log} 2>&1
+        {params.path}bracken-build -t {threads} {params.args} {params.fixed_args} > {log} 2>&1
         """
 
 rule bracken_build_size:
