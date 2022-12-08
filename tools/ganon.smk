@@ -105,13 +105,13 @@ rule ganon_classify_format:
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
 
-        # Check with .tax entries at "assembly" level and taxonomic level
+        # Check with .tax entries at "assembly" or "sequence" level and report parent taxa
         # also report entries not matching .tax (-a 1)
         # Check if end of read id is "/1" and remove it
 
-        join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 
-        <(sort -t$'\t' -k 2,2 {input.lca}) 
-        <(sort -t$'\t' -k 1,1 {input.dbtax}) | 
+        join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 \
+        <(sort -t$'\t' -k 2,2 {input.lca}) \
+        <(sort -t$'\t' -k 1,1 {input.dbtax}) | \
         awk 'BEGIN{{FS=OFS="\t"}}
             {{
             if(substr($1,length($1)-1)=="/1"){{
