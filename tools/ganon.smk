@@ -109,7 +109,24 @@ rule ganon_classify_format:
         # also report entries not matching .tax (-a 1)
         # Check if end of read id is "/1" and remove it
 
-        join -1 2 -2 1 <(sort -t$'\t' -k 2,2 {input.lca}) <(sort -t$'\t' -k 1,1 {input.dbtax}) -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 | awk 'BEGIN{{FS=OFS="\t"}}{{if(substr($1,length($1)-1)=="/1"){{$1=substr($1,0,length($1)-2)}};if($4=="assembly"){{print $1,$3,$2,""}}else{{if($4=="sequence"){{print $1,$3,"",$2}}else{{print $1,$3,"",""}}}}}}' >> {output.bioboxes}
+        join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 
+        <(sort -t$'\t' -k 2,2 {input.lca}) 
+        <(sort -t$'\t' -k 1,1 {input.dbtax}) | 
+        awk 'BEGIN{{FS=OFS="\t"}}
+            {{
+            if(substr($1,length($1)-1)=="/1"){{
+                $1=substr($1,0,length($1)-2);
+            }};
+            if($4=="assembly"){{
+                print $1,$3,$2,"";
+            }}else{{
+                if($4=="sequence"){{
+                    print $1,$3,"",$2;
+                }}else{{
+                    print $1,$2,"","";
+                }}
+            }}
+            }}' >> {output.bioboxes}
         """
 
 

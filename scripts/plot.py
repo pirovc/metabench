@@ -64,6 +64,7 @@ def main():
             for e in report_elements:
                 tables[t][c][e] = pd.DataFrame()
 
+
     for pjson in parsed_json.values():
         rep_type = pjson["report"]
         rep_cate = pjson["category"]
@@ -80,6 +81,12 @@ def main():
     #             print(t,c,e)
     #             print(tables[t][c][e])
 
+
+    # Make unique random names (same as number of config files)
+    rnd_names = set()
+    while len(rnd_names) < len(parsed_json):
+        rnd_names.add(randomname.get_name())
+
     main_tabs = []
     evals_tabs = []
     bench_tabs = []
@@ -88,24 +95,24 @@ def main():
 
     if not tables["profiling"]["evals"]["config"].empty:
         evals_tabs.append(Panel(child=plot_evals(
-            "profiling", tables, default_ranks, tools), title="Profiling"))
+            "profiling", tables, default_ranks, tools, rnd_names), title="Profiling"))
 
     if not tables["binning"]["evals"]["config"].empty:
         evals_tabs.append(Panel(child=plot_evals(
-            "binning", tables, default_ranks, tools), title="Binning"))
+            "binning", tables, default_ranks, tools, rnd_names), title="Binning"))
 
 
     if not tables["profiling"]["benchmark"]["config"].empty:
         bench_tabs.append(Panel(child=plot_bench(
-            "profiling", tables, default_ranks, tools), title="Profiling"))
+            "profiling", tables, default_ranks, tools, rnd_names), title="Profiling"))
 
     if not tables["binning"]["benchmark"]["config"].empty:
         bench_tabs.append(Panel(child=plot_bench(
-            "binning", tables, default_ranks, tools), title="Binning"))
+            "binning", tables, default_ranks, tools, rnd_names), title="Binning"))
     
     if not tables["build"]["benchmark"]["config"].empty:
         bench_tabs.append(Panel(child=plot_bench(
-            "build", tables, default_ranks, tools), title="Build"))
+            "build", tables, default_ranks, tools, rnd_names), title="Build"))
 
 
     if evals_tabs:
@@ -123,8 +130,8 @@ def main():
     return True
 
 
-def plot_bench(report, tables, default_ranks, tools):
-    df_config = parse_df_config(tables[report]["benchmark"]["config"])
+def plot_bench(report, tables, default_ranks, tools, rnd_names):
+    df_config = parse_df_config(tables[report]["benchmark"]["config"], rnd_names)
     cds_config = ColumnDataSource(df_config)
 
     df_bench = parse_df_data(tables[report]["benchmark"]["metrics"])
@@ -233,9 +240,9 @@ def plot_bench(report, tables, default_ranks, tools):
                      ])
     return layout
 
-def plot_evals(report, tables, default_ranks, tools):
+def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
-    df_config = parse_df_config(tables[report]["evals"]["config"])
+    df_config = parse_df_config(tables[report]["evals"]["config"], rnd_names)
     cds_config = ColumnDataSource(df_config)
 
     df_evals = parse_df_data(tables[report]["evals"]["metrics"])
@@ -352,8 +359,8 @@ def plot_evals(report, tables, default_ranks, tools):
         return y;
     """)
 
-    plot_compare.scatter(x="value",
-                         y=transform("metric", get_metric_x),
+    plot_compare.scatter(x=transform("metric", get_metric_x),
+                         y="value",
                          source=cds_evals,
                          view=view_compare,
                          size=12,
@@ -662,14 +669,14 @@ def make_color_palette(n_colors, linear: bool = False, palette: dict = None):
 
         return palette[:n_colors]
 
-def parse_df_config(df):
+def parse_df_config(df, rnd_names):
     # Main dataframes and cds
     df_config = pd.DataFrame(df)
     # Add toll name to version (in case of same version number among tools)
     df_config["version"] = df_config["version"] + \
         " (" + df_config["tool"] + ")"
     # Create random names for each configuration
-    df_config["name"] = [randomname.get_name()
+    df_config["name"] = [rnd_names.pop()
                          for i in range(df_config.shape[0])]
     return df_config
 
