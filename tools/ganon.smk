@@ -32,7 +32,11 @@ rule ganon_build:
                            --threads {threads} \
                            --verbose \
                            {params.fixed_args} {params.args} > {log} 2>&1
-        """
+
+	if [[ -e "{params.outprefix}.hibf" ]]; then
+	  ln -sr "{params.outprefix}.hibf" "{params.outprefix}.ibf"
+        fi
+	"""
 
 rule ganon_build_size:
     input:
@@ -41,7 +45,7 @@ rule ganon_build_size:
     output:
         "ganon/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --block-size=1 {input} > {output}"  # output in bytes
+        "du -D --block-size=1 {input} > {output}"  # output in bytes
 
 
 rule ganon_classify:
