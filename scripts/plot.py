@@ -671,7 +671,7 @@ def make_color_palette(n_colors, linear: bool = False, palette: dict = None):
 
 def parse_df_config(df, rnd_names):
     # Main dataframes and cds
-    df_config = pd.DataFrame(df)
+    df_config = pd.DataFrame(df).fillna('')
     # Add toll name to version (in case of same version number among tools)
     df_config["version"] = df_config["version"] + \
         " (" + df_config["tool"] + ")"
@@ -705,6 +705,7 @@ def plot_datatable(cds_config, df_config, cds_data):
     for h in df_config.columns:
         for u in df_config[h].unique():
             if u:
+                print(h,u)
                 choices.append((h+"|"+u, u + " [" + h + "]"))
 
     multichoice_config = MultiChoice(options=choices, placeholder="Fixed filter")
