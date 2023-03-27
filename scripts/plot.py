@@ -5,6 +5,7 @@ import sys
 import os
 import json
 import random
+import math
 
 import randomname  # pip install randomname https://github.com/beasteers/randomname
 
@@ -143,7 +144,7 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
     metrics = sorted(set(cds_bench.data["metric"]))
     init_metric = metrics[0]
 
-    smarkers, sfillcolor, slinecolor = define_markers(df_config.shape[0])
+    smarkers, scolor = define_markers(df_config.shape[0])
 
     hover_tool = make_hover(cds_config, ["index", "fixed_arguments"])
     #
@@ -197,8 +198,7 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
                         marker=transform("config", CustomJSTransform(
                             args=dict(e=smarkers), v_func="return xs.map(function(x) { return e[x]; });")),
                         fill_color=transform("config", CustomJSTransform(args=dict(
-                            e=sfillcolor), v_func="return xs.map(function(x) { return e[x]; });")),
-                        line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
+                            e=scolor), v_func="return xs.map(function(x) { return e[x]; });")))
     plot_groups.add_tools(hover_tool)
 
     plot_groups.xaxis.major_label_orientation = "vertical"
@@ -259,7 +259,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     init_metric = next(iter(metrics))[0]
     init_rank = "species" if "species" in default_ranks else default_ranks[-1]
 
-    smarkers, sfillcolor, slinecolor = define_markers(df_config.shape[0])
+    smarkers, scolor = define_markers(df_config.shape[0])
 
     # Hover tool for tooltips (all plots)
     hover_tool = make_hover(cds_config, ["index"])
@@ -279,6 +279,57 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     #
     table_config, filter_config, widgets_config = plot_datatable(cds_config, df_config, cds_evals)
 
+    # Marker and Color multiselect
+    multiselect_markers = MultiSelect(
+        value=["name"], options=df_config.columns.to_list(), size=8)
+    multiselect_colors = MultiSelect(
+        value=["name"], options=df_config.columns.to_list(), size=8)
+
+    get_marker = CustomJSTransform(args=dict(smarkers=smarkers,
+                                             cds_config=cds_config,
+                                             multiselect_markers=multiselect_markers),
+                                   v_func="""
+
+                                   var groups_dict = {};
+                                   var markers_dict = {};
+                                   var cnt_groups = 0;
+                                   for(let x = 0; x < xs.length; x++){
+                                       var group = "|";
+                                       for(let v = 0; v < multiselect_markers.value.length; v++){
+                                            group += cds_config.data[multiselect_markers.value[v]][x] + "|"
+                                       }
+                                       if(!(group in groups_dict)){
+                                           groups_dict[group] = cnt_groups;
+                                           cnt_groups++;
+                                       }
+                                       markers_dict[x] = smarkers[groups_dict[group]];
+                                   }
+
+                                   return xs.map(function(x) { return markers_dict[x]; });
+                                   """)
+
+    get_color = CustomJSTransform(args=dict(scolor=scolor,
+                                            cds_config=cds_config,
+                                            multiselect_colors=multiselect_colors),
+                                   v_func="""
+
+                                   var groups_dict = {};
+                                   var colors_dict = {};
+                                   var cnt_groups = 0;
+                                   for(let x = 0; x < xs.length; x++){
+                                       var group = "|";
+                                       for(let v = 0; v < multiselect_colors.value.length; v++){
+                                            group += cds_config.data[multiselect_colors.value[v]][x] + "|"
+                                       }
+                                       if(!(group in groups_dict)){
+                                           groups_dict[group] = cnt_groups;
+                                           cnt_groups++;
+                                       }
+                                       colors_dict[x] = scolor[groups_dict[group]];
+                                   }
+
+                                   return xs.map(function(x) { return colors_dict[x]; });
+                                   """)
 
     #
     # Plot Ranks
@@ -298,11 +349,9 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                        source=cds_evals,
                        view=view_ranks,
                        size=12,
-                       marker=transform("config", CustomJSTransform(
-                           args=dict(e=smarkers), v_func="return xs.map(function(x) { return e[x]; });")),
-                       fill_color=transform("config", CustomJSTransform(args=dict(
-                           e=sfillcolor), v_func="return xs.map(function(x) { return e[x]; });")),
-                       line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
+                       marker=transform("config", get_marker),
+                       fill_color=transform("config", get_color),
+                       line_color="black")
     plot_ranks.add_tools(hover_tool)
     plot_ranks.yaxis.axis_label = init_metric
     plot_ranks.xaxis.major_label_orientation = "vertical"
@@ -364,11 +413,10 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                          source=cds_evals,
                          view=view_compare,
                          size=12,
-                         marker=transform("config", CustomJSTransform(
-                             args=dict(e=smarkers), v_func="return xs.map(function(x) { return e[x]; });")),
-                         fill_color=transform("config", CustomJSTransform(args=dict(
-                             e=sfillcolor), v_func="return xs.map(function(x) { return e[x]; });")),
-                         line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
+                         marker=transform("config", get_marker),
+                         fill_color=transform("config", get_color),
+                         line_color="black")
+
     plot_compare.add_tools(hover_tool)
     plot_compare.xaxis.axis_label = init_metric
     plot_compare.yaxis.axis_label = init_metric
@@ -395,7 +443,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                          width=800, height=600)
 
     multiselect_groups = MultiSelect(
-        value=["name"], options=df_config.columns.to_list(), size=7)
+        value=["name"], options=df_config.columns.to_list(), size=8)
     toggle_label_groups = CheckboxGroup(labels=["Hide samples labels"], active=[])
     sort_groups = Select(title="Sort:", value="name", options=df_config.columns.to_list())
 
@@ -428,15 +476,21 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                         source=cds_evals,
                         view=view_groups,
                         size=12,
-                        marker=transform("config", CustomJSTransform(
-                            args=dict(e=smarkers), v_func="return xs.map(function(x) { return e[x]; });")),
-                        fill_color=transform("config", CustomJSTransform(args=dict(
-                            e=sfillcolor), v_func="return xs.map(function(x) { return e[x]; });")),
-                        line_color=transform("config", CustomJSTransform(args=dict(e=slinecolor), v_func="return xs.map(function(x) { return e[x]; });")))
+                        marker=transform("config", get_marker),
+                        fill_color=transform("config", get_color),
+                        line_color="black")
     plot_groups.add_tools(hover_tool)
 
     plot_groups.xaxis.major_label_orientation = "vertical"
     plot_groups.yaxis.axis_label = init_metric
+
+    cb_multiselect_markers_color = CustomJS(
+        args=dict(cds_evals=cds_evals),
+        code="""
+        cds_evals.change.emit();
+        """)
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color)
 
     cb_multiselect_groups = CustomJS(
         args=dict(cds_config=cds_config,
@@ -585,7 +639,9 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                                   radio_ranges,
                                   multiselect_groups,
                                   toggle_label_groups,
-                                  sort_groups
+                                  sort_groups,
+                                  multiselect_markers,
+                                  multiselect_colors
                                  ]),
                           column([plot_compare,
                                   select_metric_x_compare
@@ -778,19 +834,27 @@ def plot_datatable(cds_config, df_config, cds_data):
     return table_config, filter_config, widgets_config
 
 def define_markers(n_elements):
-    
-    # Remove markes without fill-color
-    markers = list(MarkerType)
-    for m in ["asterisk", "cross", "dash", "dot", "x", "y"]:
-        markers.remove(m)
-    if n_elements > len(markers):
-        smarkers = random.choices(markers, k=n_elements)
-    else:
-        smarkers = random.sample(markers, n_elements)
-    sfillcolor = random.sample(make_color_palette(n_elements), n_elements)
-    slinecolor = random.sample(make_color_palette(n_elements), n_elements)
 
-    return smarkers, sfillcolor, slinecolor
+    # Remove markes without fill-color
+    #markers = list(MarkerType)
+    #for m in ["asterisk", "cross", "dash", "dot", "x", "y"]:
+    #    markers.remove(m)
+
+    # Markers in a "meaningful" order, considering their differences
+    markers = ["circle", "plus", "square", "triangle", "star", "diamond", "hex", "inverted_triangle", "circle_cross", "square_cross", "triangle_dot", "star_dot", "diamond_cross", "hex_dot", "circle_dot", "diamond_dot", "square_dot", "triangle_pin", "circle_x", "square_pin", "circle_y", "square_x"]
+    if n_elements > len(markers):
+        markers = markers * math.ceil(n_elements/len(markers))
+
+    smarkers = markers[:n_elements] # random.sample(markers, n_elements)
+
+    # Not enough "different colors", always keep first 20 very different
+    if n_elements <= 10:
+        scolor = make_color_palette(n_elements)
+    else:
+        scolor = list(make_color_palette(10))
+        scolor.extend(list(random.sample(make_color_palette(n_elements-10, palette=Turbo256), n_elements-10)))
+
+    return smarkers, scolor
 
 def make_hover(cds_config, exclude_list: list = []):
     hover_tool = HoverTool(
