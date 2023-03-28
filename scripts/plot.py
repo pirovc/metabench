@@ -138,9 +138,6 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
     df_bench = parse_df_data(tables[report]["benchmark"]["metrics"])
     cds_bench = ColumnDataSource(df_bench)
 
-    print(df_config)
-    print(df_bench)
-
     metrics = sorted(set(cds_bench.data["metric"]))
     init_metric = metrics[0]
 
@@ -152,6 +149,13 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
     #
     table_config, filter_config, widgets_config = plot_datatable(cds_config, df_config, cds_bench)
     
+    # Marker and Color multiselect
+    multiselect_groups = MultiSelect(title="Group by",
+        value=["name"], options=df_config.columns.to_list(), size=8)
+    multiselect_markers = MultiSelect(title="Marker",
+        value=["name"], options=df_config.columns.to_list(), size=8)
+    multiselect_colors = MultiSelect(title="Color",
+        value=["name"], options=df_config.columns.to_list(), size=8)
 
     #
     # Plot Group
@@ -165,44 +169,31 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
     select_metric_x_groups = Select(
         title="Metric (x):", value=init_metric, options=metrics)
 
-    multiselect_groups = MultiSelect(
-        value=["name"], options=df_config.columns.to_list())
+
 
     filter_metric_x_groups = GroupFilter(column_name="metric", group=init_metric)
     view_groups = CDSView(source=cds_bench, filters=[filter_metric_x_groups, filter_config])
 
-    # Change values on x-axis based on selected configuration groups
-    group_x = CustomJSTransform(
-        args=dict(cds_config=cds_config,
-                  multiselect_groups=multiselect_groups),
-        v_func="""
-        if(multiselect_groups.value.length>0){
-            const y = new Array(xs.length);
-            for (let i = 0; i < xs.length; i++) {
-                var group = "|";
-                for(let v = 0; v < multiselect_groups.value.length; v++){
-                    group += cds_config.data[multiselect_groups.value[v]][xs[i]] + "|"
-                }
-                y[i] = group;
-            }
-            return y;
-        }else{
-            return xs;
-        }
-    """)
-
-    plot_groups.scatter(x=transform("config", group_x), y="value",
+    plot_groups.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
+                        y="value",
                         source=cds_bench,
                         view=view_groups,
                         size=12,
-                        marker=transform("config", CustomJSTransform(
-                            args=dict(e=smarkers), v_func="return xs.map(function(x) { return e[x]; });")),
-                        fill_color=transform("config", CustomJSTransform(args=dict(
-                            e=scolor), v_func="return xs.map(function(x) { return e[x]; });")))
+                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
+                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
+                        line_color="black")
     plot_groups.add_tools(hover_tool)
 
     plot_groups.xaxis.major_label_orientation = "vertical"
     plot_groups.yaxis.axis_label = init_metric
+
+    cb_multiselect_markers_color = CustomJS(
+        args=dict(cds_bench=cds_bench),
+        code="""
+        cds_bench.change.emit();
+        """)
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color)
 
     cb_select_metric_x_groups = CustomJS(
         args=dict(cds_bench=cds_bench,
@@ -236,7 +227,10 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
     cds_config.selected.js_on_change('indices', cb_multiselect_groups)
 
     layout = column([row(table_config, column(*widgets_config)),
-                     row(column([plot_groups, select_metric_x_groups, multiselect_groups]))
+                     row(plot_groups, column([select_metric_x_groups,
+                                              multiselect_groups,
+                                              multiselect_markers,
+                                              multiselect_colors]))
                      ])
     return layout
 
@@ -247,9 +241,6 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
     df_evals = parse_df_data(tables[report]["evals"]["metrics"])
     cds_evals = ColumnDataSource(df_evals)
-
-    #print(df_config)
-    #print(df_evals)
 
     metrics = []
     for metric in set(cds_evals.data["metric"]):
@@ -280,56 +271,14 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     table_config, filter_config, widgets_config = plot_datatable(cds_config, df_config, cds_evals)
 
     # Marker and Color multiselect
-    multiselect_markers = MultiSelect(
+    multiselect_groups = MultiSelect(title="Group by",
         value=["name"], options=df_config.columns.to_list(), size=8)
-    multiselect_colors = MultiSelect(
+    toggle_label_groups = CheckboxGroup(labels=["Hide samples labels"], active=[])
+    sort_groups = Select(title="Sort y:", value="name", options=df_config.columns.to_list())
+    multiselect_markers = MultiSelect(title="Marker",
         value=["name"], options=df_config.columns.to_list(), size=8)
-
-    get_marker = CustomJSTransform(args=dict(smarkers=smarkers,
-                                             cds_config=cds_config,
-                                             multiselect_markers=multiselect_markers),
-                                   v_func="""
-
-                                   var groups_dict = {};
-                                   var markers_dict = {};
-                                   var cnt_groups = 0;
-                                   for(let x = 0; x < xs.length; x++){
-                                       var group = "|";
-                                       for(let v = 0; v < multiselect_markers.value.length; v++){
-                                            group += cds_config.data[multiselect_markers.value[v]][x] + "|"
-                                       }
-                                       if(!(group in groups_dict)){
-                                           groups_dict[group] = cnt_groups;
-                                           cnt_groups++;
-                                       }
-                                       markers_dict[x] = smarkers[groups_dict[group]];
-                                   }
-
-                                   return xs.map(function(x) { return markers_dict[x]; });
-                                   """)
-
-    get_color = CustomJSTransform(args=dict(scolor=scolor,
-                                            cds_config=cds_config,
-                                            multiselect_colors=multiselect_colors),
-                                   v_func="""
-
-                                   var groups_dict = {};
-                                   var colors_dict = {};
-                                   var cnt_groups = 0;
-                                   for(let x = 0; x < xs.length; x++){
-                                       var group = "|";
-                                       for(let v = 0; v < multiselect_colors.value.length; v++){
-                                            group += cds_config.data[multiselect_colors.value[v]][x] + "|"
-                                       }
-                                       if(!(group in groups_dict)){
-                                           groups_dict[group] = cnt_groups;
-                                           cnt_groups++;
-                                       }
-                                       colors_dict[x] = scolor[groups_dict[group]];
-                                   }
-
-                                   return xs.map(function(x) { return colors_dict[x]; });
-                                   """)
+    multiselect_colors = MultiSelect(title="Color",
+        value=["name"], options=df_config.columns.to_list(), size=8)
 
     #
     # Plot Ranks
@@ -349,8 +298,8 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                        source=cds_evals,
                        view=view_ranks,
                        size=12,
-                       marker=transform("config", get_marker),
-                       fill_color=transform("config", get_color),
+                       marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
+                       fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                        line_color="black")
     plot_ranks.add_tools(hover_tool)
     plot_ranks.yaxis.axis_label = init_metric
@@ -413,8 +362,8 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                          source=cds_evals,
                          view=view_compare,
                          size=12,
-                         marker=transform("config", get_marker),
-                         fill_color=transform("config", get_color),
+                         marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
+                         fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                          line_color="black")
 
     plot_compare.add_tools(hover_tool)
@@ -440,44 +389,22 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                          #y_range=Range1d(start=0),
                          toolbar_location="above",
                          tools=tools,
-                         width=800, height=600)
+                         width=800, height=800)
 
-    multiselect_groups = MultiSelect(
-        value=["name"], options=df_config.columns.to_list(), size=8)
-    toggle_label_groups = CheckboxGroup(labels=["Hide samples labels"], active=[])
-    sort_groups = Select(title="Sort:", value="name", options=df_config.columns.to_list())
+
 
     filter_rank_groups = GroupFilter(column_name="rank", group=init_rank)
     filter_metric_groups = GroupFilter(column_name="metric", group=init_metric)
     view_groups = CDSView(source=cds_evals, filters=[
         filter_rank_groups, filter_metric_groups, filter_config])
 
-    # Change values on x-axis based on selected configuration groups
-    group_x = CustomJSTransform(
-        args=dict(cds_config=cds_config,
-                  multiselect_groups=multiselect_groups),
-        v_func="""
-        if(multiselect_groups.value.length>0){
-            const y = new Array(xs.length);
-            for (let i = 0; i < xs.length; i++) {
-                var group = "|";
-                for(let v = 0; v < multiselect_groups.value.length; v++){
-                    group += cds_config.data[multiselect_groups.value[v]][xs[i]] + "|"
-                }
-                y[i] = group;
-            }
-            return y;
-        }else{
-            return xs;
-        }
-    """)
-
-    plot_groups.scatter(x=transform("config", group_x), y="value",
+    plot_groups.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
+                        y="value",
                         source=cds_evals,
                         view=view_groups,
                         size=12,
-                        marker=transform("config", get_marker),
-                        fill_color=transform("config", get_color),
+                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
+                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                         line_color="black")
     plot_groups.add_tools(hover_tool)
 
@@ -631,24 +558,19 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     select_rank.js_on_change('value', cb_select_rank)
 
 
-
     layout = column([row(table_config, column(*widgets_config)),
                      row([plot_groups, 
                           column([select_metric,
                                   select_rank,
                                   radio_ranges,
                                   multiselect_groups,
-                                  toggle_label_groups,
                                   sort_groups,
                                   multiselect_markers,
-                                  multiselect_colors
+                                  multiselect_colors,
+                                  toggle_label_groups
                                  ]),
-                          column([plot_compare,
-                                  select_metric_x_compare
-                                 ]),
-                          column([plot_ranks,
-                                  checkbox_ranks
-                                 ]),
+                          column(row([plot_compare,select_metric_x_compare]),
+                                 row([plot_ranks, checkbox_ranks])),
                     ])])
 
     return layout
@@ -864,6 +786,54 @@ def make_hover(cds_config, exclude_list: list = []):
             cds_config=cds_config), code="return cds_config.data[format][value]")}
     )
     return hover_tool
+
+
+def CustomJSTransform_group_x(cds_config, multiselect_groups):
+    # Change values on x-axis based on selected configuration groups
+    group_x = CustomJSTransform(
+        args=dict(cds_config=cds_config,
+                  multiselect_groups=multiselect_groups),
+        v_func="""
+        if(multiselect_groups.value.length>0){
+            const y = new Array(xs.length);
+            for (let i = 0; i < xs.length; i++) {
+                var group = "|";
+                for(let v = 0; v < multiselect_groups.value.length; v++){
+                    group += cds_config.data[multiselect_groups.value[v]][xs[i]] + "|"
+                }
+                y[i] = group;
+            }
+            return y;
+        }else{
+            return xs;
+        }
+    """)
+    return group_x
+
+def CustomJSTransform_get_markercolor(slist, cds_config, multiselect):
+    get_marker = CustomJSTransform(args=dict(slist=slist,
+                                             cds_config=cds_config,
+                                             multiselect=multiselect),
+                                   v_func="""
+
+                                   var groups_dict = {};
+                                   var markers_dict = {};
+                                   var cnt_groups = 0;
+                                   for(let x = 0; x < xs.length; x++){
+                                       var group = "|";
+                                       for(let v = 0; v < multiselect.value.length; v++){
+                                            group += cds_config.data[multiselect.value[v]][x] + "|"
+                                       }
+                                       if(!(group in groups_dict)){
+                                           groups_dict[group] = cnt_groups;
+                                           cnt_groups++;
+                                       }
+                                       markers_dict[x] = slist[groups_dict[group]];
+                                   }
+
+                                   return xs.map(function(x) { return markers_dict[x]; });
+                                   """)
+    return get_marker
 
 if __name__ == "__main__":
     sys.exit(0 if main() else 1)
