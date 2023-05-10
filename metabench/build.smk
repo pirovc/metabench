@@ -16,7 +16,9 @@ def input_build():
                         path = tool + "/" + vers + "/" + dtbs + "/"
                         # build product of all arguments (single or range)
                         for args in args_product(config["run"][tool][vers][dtbs]["args"] if "args" in config["run"][tool][vers][dtbs] else None):
-                            out.append(path + join_args(args))
+                            out.append(path + join_args(sorted(args)))
+    import pprint
+    pprint.pprint(out)
     return out
 
 rule all:

@@ -20,9 +20,13 @@ def input_all():
                                 path = tool + "/" + vers + "/" + samp + "/" + dtbs + "/" + dtbs_args + "/"
                                 # build product of all arguments (single or range)
                                 for binning_args in args_product(config["run"][tool][vers]["binning_args"]):
-                                    out.append(path + join_args(binning_args) + ".binning")
+                                    ba = join_args(sorted(binning_args))
+                                    out.append(path + ba + ".binning")
                                     for profiling_args in args_product(config["run"][tool][vers]["profiling_args"]):
-                                        out.append(path + join_args(binning_args) + "/" + join_args(profiling_args) + ".profiling")
+                                        pa = join_args(sorted(profiling_args))
+                                        out.append(path + ba + "/" + pa + ".profiling")
+    import pprint
+    pprint.pprint(out)
     return out
 
 rule all:
