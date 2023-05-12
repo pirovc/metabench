@@ -1,0 +1,35 @@
+workdir: "/my/work/dir/results/"
+threads: 8
+
+samples:
+  "sample10":
+    "binning": "/the/ground/truth/sample10.binning.bioboxes.gz"
+    "profiling": "/the/ground/truth/sample10.profiling.bioboxes"
+  "sample100":
+    "binning": "/the/ground/truth/sample100.binning.bioboxes"
+    "profiling": "/the/ground/truth/sample100.profiling.bioboxes.gz"
+  "sample1000":
+    "binning": "/the/ground/truth/sample1000.binning.bioboxes.gz"
+    "profiling": "/the/ground/truth/sample1000.profiling.bioboxes.gz"
+
+dbs:
+  "database1": "/my/db/contents/db1.tax"
+  "database99": "/my/db/contents/db99.tax"
+
+ranks:
+  - superkingdom
+  - phylum
+  - class
+  - order
+  - family
+  - genus
+  - species
+
+taxonomy: "ncbi"
+taxonomy_files: "/misc/files/taxdump.tar.gz"
+
+threhsold_profiling:
+  - 0
+  - 0.01
+  - 0.05
+  - 0.1

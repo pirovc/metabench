@@ -1,0 +1,50 @@
+workdir: "/my/work/dir/databases/"
+threads: 8
+repeat: 1
+
+tools:
+  toolA:
+    "1.6.0": "/path/to/toolA/"
+  toolB:
+    "2.1.2": ""
+
+dbs:
+  "database1":
+    folder: "/where/is/the/db1/"
+    extension: ".fna.gz"
+    taxonomy: "ncbi"
+    taxonomy_files: "/misc/files/taxdump.tar.gz"
+  "database99":
+    folder: "/where/is/the/db99/"
+    extension: ".fna.gz"
+    taxonomy: "ncbi"
+    taxonomy_files: "/misc/files/taxdump.tar.gz"
+
+run:
+   toolA:
+     "1.6.0":
+       database1:
+         fixed_args:
+           "--path-to-lib": "/path/to/lib"
+         args:
+           "--normal-numeric-value": 0.1
+           "--normal-string-value": "mystring"
+           "--boolean": True
+           "--integer-ranges": "0, 100, 10"                 # start, end, interval (end point inclusive)
+           "--float-ranges": "0, 1, 0.1"                    # start, end, interval (end point inclusive)
+           "--list-numeric-values": [0, 1, 10, 12, 15, ""]  # "" disables argument
+           "--list-string-values": ["test", "another", ""]  # "" disables argument
+           "--list-boolean-values": [True, False]           # False disables argument
+       database99:
+         fixed_args:
+           "--path-to-lib": "/path/to/lib"
+         args:                        # Empty will generate "default" output
+
+   toolB:
+     "2.1.2":
+       database1:
+         fixed_args:
+         args:
+       database99:
+         fixed_args:
+         args:
