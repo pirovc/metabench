@@ -9,8 +9,7 @@ rule ganon_build:
     threads:
         config["threads"]
     conda:
-        #srcdir("../envs/ganon.yaml")
-        srcdir("../envs/evals.yaml")
+        srcdir("../envs/ganon_env.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{dtbs}/{dtbs_args}/ganon_db",
@@ -19,10 +18,6 @@ rule ganon_build:
         args = lambda wildcards: str2args(wildcards.dtbs_args)
     shell: 
         """
-        # if path is provided, deactivate conda
-        # if [[ ! -z "{params.path}" ]]; then
-        #     source deactivate;
-        # fi
         {params.path}ganon build-custom \
                            --db-prefix {params.outprefix} \
                            --input {params.db[folder]} \
@@ -31,12 +26,13 @@ rule ganon_build:
                            --taxonomy-files {params.db[taxonomy_files]} \
                            --threads {threads} \
                            --verbose \
-                           {params.fixed_args} {params.args} > {log} 2>&1
+                           {params.fixed_args} \
+                           {params.args} > {log} 2>&1
 
-	if [[ -e "{params.outprefix}.hibf" ]]; then
-	  ln -sr "{params.outprefix}.hibf" "{params.outprefix}.ibf"
+        if [[ -e "{params.outprefix}.hibf" ]]; then
+            ln -sr "{params.outprefix}.hibf" "{params.outprefix}.ibf"
         fi
-	"""
+        """
 
 rule ganon_build_size:
     input:
@@ -62,8 +58,7 @@ rule ganon_classify:
     threads:
         config["threads"]
     conda:
-        #srcdir("../envs/ganon.yaml")
-        srcdir("../envs/evals.yaml")
+        srcdir("../envs/ganon_env.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}", 
@@ -73,10 +68,6 @@ rule ganon_classify:
         args = lambda wildcards: str2args(wildcards.b_args)
     shell:
         """
-        # if path is provided, deactivate conda
-        # if [[ ! -z "{params.path}" ]]; then
-        #     source deactivate;
-        # fi
         if [[ -z "{params.input_fq2}" ]]; then # single-end
             {params.path}ganon classify \
                                --db-prefix {params.dbprefix} \
@@ -84,7 +75,8 @@ rule ganon_classify:
                                --output-prefix {params.outprefix} \
                                --threads {threads} \
                                --verbose --output-lca \
-                               {params.fixed_args} {params.args} > {log} 2>&1
+                               {params.fixed_args} \
+                               {params.args} > {log} 2>&1
         else # paired-end
             {params.path}ganon classify \
                                --db-prefix {params.dbprefix} \
@@ -92,7 +84,8 @@ rule ganon_classify:
                                --output-prefix {params.outprefix} \
                                --threads {threads} \
                                --verbose --output-lca \
-                               {params.fixed_args} {params.args} > {log} 2>&1
+                               {params.fixed_args} \
+                               {params.args} > {log} 2>&1
         fi
         """
 
@@ -144,8 +137,7 @@ rule ganon_profiling:
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
     conda:
-        #srcdir("../envs/ganon.yaml")
-        srcdir("../envs/evals.yaml")
+        srcdir("../envs/ganon_env.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}", 
@@ -153,11 +145,6 @@ rule ganon_profiling:
         args = lambda wildcards: str2args(wildcards.p_args)
     shell:
         """
-        # if path is provided, deactivate conda
-        # if [[ ! -z "{params.path}" ]]; then
-        #     source deactivate;
-        # fi
-        
         {params.path}ganon report \
                            --db-prefix {params.dbprefix} \
                            --input {input.rep} \
