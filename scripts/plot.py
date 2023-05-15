@@ -15,7 +15,7 @@ import pandas as pd
 from bokeh.io import save
 from bokeh.core.enums import MarkerType
 from bokeh.plotting import figure, output_file
-from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter, FactorRange, MultiSelect, CustomJSHover, Legend, LegendItem, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, CheckboxButtonGroup, Spacer, Range1d, TextInput
+from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter, FactorRange, MultiSelect, CustomJSHover, Legend, LegendItem, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, CheckboxButtonGroup, Spacer, Range1d, TextInput, Whisker
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.models.filters import GroupFilter, IndexFilter
 from bokeh.palettes import Category10, Category20, Colorblind, linear_palette, Turbo256
@@ -170,7 +170,7 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
                          width=1000, height=800)
 
     select_metric_x_groups = Select(
-        title="Metric (x):", value=init_metric, options=metrics)
+        title="Metric (y):", value=init_metric, options=metrics)
 
 
     filter_metric_x_groups = GroupFilter(column_name="metric", group=init_metric)
@@ -188,7 +188,6 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
 
     plot_groups.xaxis.major_label_orientation = "vertical"
     plot_groups.yaxis.axis_label = init_metric
-
 
     legend_items = []
     for i in cds_config.data["index"]:
@@ -278,12 +277,15 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     # General widgets
 
     select_metric = Select(
-        title="Metric (x):", value=init_metric, options=metrics)
+        title="Metric (y):", value=init_metric, options=metrics)
 
     select_rank = Select(
         title="Rank:", value=init_rank, options=default_ranks)
 
     radio_ranges = RadioButtonGroup(labels=["min-max", "0-1", "0-max"], active=0)
+
+
+    button_boxplot = Button(label="Boxplot", button_type="success")
 
     #
     # DataTable
@@ -404,13 +406,11 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     # Plot Group
     #
     plot_groups = figure(title="Groups",
-                         x_range=FactorRange(
-                             factors=list(cds_config.data["name"])),
+                         x_range=FactorRange(factors=list(cds_config.data["name"])),
                          #y_range=Range1d(start=0),
                          toolbar_location="above",
                          tools=tools,
                          width=1000, height=800)
-
 
 
     filter_rank_groups = GroupFilter(column_name="rank", group=init_rank)
@@ -427,7 +427,8 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                         fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                         line_color="black")
     plot_groups.add_tools(hover_tool)
-
+    plot_groups.xaxis.major_label_orientation = "vertical"
+    plot_groups.yaxis.axis_label = init_metric
 
     legend_items = []
     for i in cds_config.data["index"]:
@@ -435,8 +436,44 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     legend_plot_groups = Legend(items=legend_items)
     plot_groups.add_layout(legend_plot_groups, 'right')
 
-    plot_groups.xaxis.major_label_orientation = "vertical"
-    plot_groups.yaxis.axis_label = init_metric
+    cds_evals_whisker = ColumnDataSource(data=dict(base=list(cds_config.data["index"]), 
+        upper=[0.6 for n in cds_config.data["name"]], 
+        lower=[0.2 for n in cds_config.data["name"]]))
+
+    w = Whisker(base="base", upper="upper", lower="lower", source=cds_evals_whisker)
+    plot_groups.add_layout(w)
+
+
+    cb_button_boxplot = CustomJS(
+        args=dict(multiselect_groups=multiselect_groups,
+                  view_groups=view_groups,
+                  cds_evals=cds_evals,
+                  cds_config=cds_config,
+                  cds_evals_whisker=cds_evals_whisker),
+        code='''
+
+        // for each entry on cds_eval, get config + values on multiselect to rebuild
+        var group_values = {};
+        for(let i = 0; i < view_groups._indices.length; i++){
+            const idx_evals = view_groups._indices[i];
+            const val = cds_evals.data["value"][idx_evals];
+            
+            var group = "|";
+            for(let v = 0; v < multiselect_groups.value.length; v++){
+                 group += cds_config.data[multiselect_groups.value[v]][cds_evals.data["config"][idx_evals]] + "|"
+            }
+            
+            if(!(group in group_values)){
+                group_values[group] = new Array();
+            }
+            group_values[group].push(val);
+
+        }
+        // sort values, get quantiles, add to boxplot CDS
+        console.log(group_values);
+
+        ''')
+    button_boxplot.js_on_click(cb_button_boxplot)
 
     cb_multiselect_groups = CustomJS_multiselect(cds_config, plot_groups, multiselect_groups, multiselect_markers, multiselect_colors, sort_groups)
     multiselect_groups.js_on_change('value', cb_multiselect_groups)
@@ -549,6 +586,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                                   multiselect_markers,
                                   multiselect_colors,
                                   sort_groups,
+                                  button_boxplot,
                                   toggle_label_groups
                                  ]),
                           column([plot_compare,
@@ -875,6 +913,7 @@ def CustomJS_multiselect(cds_config, plot_groups, multiselect_groups, multiselec
             sorted_factors = factors.sort();
         }
 
+        console.log(sorted_factors);
         plot_groups.x_range.factors = sorted_factors;
         """)
 
