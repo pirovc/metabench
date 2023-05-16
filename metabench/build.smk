@@ -12,13 +12,14 @@ def input_build():
             for vers in config["tools"][tool]:
                 if vers in config["run"][tool]:
                     for dtbs in config["dbs"]:
-                        # define path to output
-                        path = tool + "/" + vers + "/" + dtbs + "/"
-                        # build product of all arguments (single or range)
-                        for args in args_product(config["run"][tool][vers][dtbs]["args"] if "args" in config["run"][tool][vers][dtbs] else None):
-                            out.append(path + join_args(sorted(args)))
-    import pprint
-    pprint.pprint(out)
+                        if dtbs in config["run"][tool][vers]:
+                            # define path to output
+                            path = tool + "/" + vers + "/" + dtbs + "/"
+                            # build product of all arguments (single or range)
+                            for args in args_product(config["run"][tool][vers][dtbs]["args"] if "args" in config["run"][tool][vers][dtbs] else None):
+                                out.append(path + join_args(sorted(args)))
+    #import pprint
+    #pprint.pprint(out)
     return out
 
 rule all:

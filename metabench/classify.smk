@@ -25,8 +25,8 @@ def input_all():
                                     for profiling_args in args_product(config["run"][tool][vers]["profiling_args"]):
                                         pa = join_args(sorted(profiling_args))
                                         out.append(path + ba + "/" + pa + ".profiling")
-    import pprint
-    pprint.pprint(out)
+    #import pprint
+    #pprint.pprint(out)
     return out
 
 rule all:
