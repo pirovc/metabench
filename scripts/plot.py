@@ -261,6 +261,30 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
     # trigger changes on checkboxes table
     cds_config.selected.js_on_change('indices', cb_multiselect_groups)
 
+    cb_toggle_label = CustomJS(
+        args=dict(xaxis=plot_groups.xaxis[0]),
+        code='''
+        if(this.active.includes(0)){
+            xaxis.major_label_text_font_size = "10px";
+            xaxis.major_tick_line_color="black";
+        }else{
+            xaxis.major_label_text_font_size = "0px";
+            xaxis.major_tick_line_color=null;
+        }
+        ''')
+    toggle_label.js_on_click(cb_toggle_label)
+
+    cb_toggle_legend = CustomJS(
+        args=dict(legend_plot_groups=legend_plot_groups),
+        code='''
+        if(this.active.includes(0)){
+            legend_plot_groups.visible = true;
+        }else{
+            legend_plot_groups.visible = false;
+        }
+        ''')
+    toggle_legend.js_on_click(cb_toggle_legend)
+
     layout = column([row(table_config, column(*widgets_config)),
                      row(plot_groups, column([select_metric,
                                               multiselect_groups,
@@ -319,7 +343,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         title="Rank:", value=init_rank, options=default_ranks)
 
     # Ranges
-    radio_ranges = RadioButtonGroup(labels=["min-max", "0-1", "0-max"], active=0)
+    radio_ranges = RadioButtonGroup(labels=["min-max", "0-1", "0-100"], active=0)
 
     # Group
     multiselect_groups = MultiSelect(title="Group by",
@@ -497,6 +521,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
     cb_multiselect_groups = CustomJS_multiselect(cds_config, plot_groups, multiselect_groups, multiselect_markers, multiselect_colors, sort_groups)    
     multiselect_groups.js_on_change('value', cb_multiselect_groups, cb_toggle_boxplot)
+    cds_config.selected.js_on_change('indices', cb_multiselect_groups) # trigger changes on checkboxes table
     sort_groups.js_on_change('value', cb_multiselect_groups)
     
     cb_multiselect_markers_color = CustomJS(
@@ -507,34 +532,6 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     multiselect_markers.js_on_change('value', cb_multiselect_markers_color, cb_multiselect_groups)
     multiselect_colors.js_on_change('value', cb_multiselect_markers_color, cb_multiselect_groups)
 
-    cb_toggle_label = CustomJS(
-        args=dict(xaxis=plot_groups.xaxis[0]),
-        code='''
-        if(this.active.includes(0)){
-            xaxis.major_label_text_font_size = "10px";
-            xaxis.major_tick_line_color="black";
-        }else{
-            xaxis.major_label_text_font_size = "0px";
-            xaxis.major_tick_line_color=null;
-        }
-        ''')
-    toggle_label.js_on_click(cb_toggle_label)
-
-
-    cb_toggle_legend = CustomJS(
-        args=dict(legend_plot_groups=legend_plot_groups),
-        code='''
-        if(this.active.includes(0)){
-            legend_plot_groups.visible = true;
-        }else{
-            legend_plot_groups.visible = false;
-        }
-        ''')
-    toggle_legend.js_on_click(cb_toggle_legend)
-
-    # trigger changes on checkboxes table
-    cds_config.selected.js_on_change('indices', cb_multiselect_groups)
-
     cb_radio_ranges = CustomJS(
         args=dict(radio_ranges=radio_ranges,
                   cds_evals=cds_evals,
@@ -543,31 +540,67 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                   y_range_compare=plot_compare.y_range,
                   x_range_compare=plot_compare.x_range),
         code="""
+        // workaround found using _initial_start/end: https://discourse.bokeh.org/t/datarange1d-update-problems/9974/4
+        
         if (radio_ranges.active==0){
-            // auto
-            //y_range_groups.start = NaN;
-            //y_range_groups.end = NaN;
+            // auto (reset default)
+            y_range_groups._initial_start = null;
+            y_range_groups._initial_end = null;
+
+            y_range_ranks._initial_start = null;
+            y_range_ranks._initial_end = null;
+
+            y_range_compare._initial_start = null;
+            y_range_compare._initial_end = null;
+            x_range_compare._initial_start = null;
+            x_range_compare._initial_end = null;
+
+            // Call change to update null values 
             cds_evals.change.emit();
+
         }else if(radio_ranges.active==1){
             // 0-1
-            y_range_groups.start = 0;
-            y_range_groups.end = 1;
+            const spacer = 0.05;
+            y_range_groups._initial_start = 0-spacer;
+            y_range_groups._initial_end = 1+spacer;
+            y_range_groups.start = 0-spacer;
+            y_range_groups.end = 1+spacer;
 
+            y_range_ranks._initial_start = 0-spacer;
+            y_range_ranks._initial_end = 1+spacer;
             y_range_ranks.start = 0;
-            y_range_ranks.end = 1;
+            y_range_ranks.end = 1+spacer;
 
-            y_range_compare.start = 0;
-            y_range_compare.end = 1;
-            x_range_compare.start = 0;
-            x_range_compare.end = 1;
+            y_range_compare._initial_start = 0-spacer;
+            y_range_compare._initial_end = 1+spacer;
+            y_range_compare.start = 0-spacer;
+            y_range_compare.end = 1+spacer;
+            x_range_compare._initial_start = 0-spacer;
+            x_range_compare._initial_end = 1+spacer;
+            x_range_compare.start = 0-spacer;
+            x_range_compare.end = 1+spacer;
+
         }else if(radio_ranges.active==2){
-            // 0-max
-            y_range_groups.start = 0;
+            // 0-100
+            const spacer = 5;
+            y_range_groups._initial_start = 0-spacer;
+            y_range_groups._initial_end = 100+spacer;
+            y_range_groups.start = 0-spacer;
+            y_range_groups.end = 100+spacer;
 
+            y_range_ranks._initial_start = 0-spacer;
+            y_range_ranks._initial_end = 100+spacer;
             y_range_ranks.start = 0;
+            y_range_ranks.end = 100+spacer;
 
-            y_range_compare.start = 0;
-            x_range_compare.start = 0;
+            y_range_compare._initial_start = 0-spacer;
+            y_range_compare._initial_end = 100+spacer;
+            y_range_compare.start = 0-spacer;
+            y_range_compare.end = 100+spacer;
+            x_range_compare._initial_start = 0-spacer;
+            x_range_compare._initial_end = 100+spacer;
+            x_range_compare.start = 0-spacer;
+            x_range_compare.end = 100+spacer;
         }
         """)
     radio_ranges.js_on_click(cb_radio_ranges)
@@ -598,7 +631,6 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         """)
     select_metric.js_on_change('value', cb_select_metric, cb_toggle_boxplot)
 
-
     cb_select_rank = CustomJS(
         args=dict(cds_evals=cds_evals,
                   filter_rank_compare=filter_rank_compare,
@@ -608,7 +640,32 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         filter_rank_groups.group = this.value;
         cds_evals.change.emit();
         """)
-    select_rank.js_on_change('value', cb_select_rank)
+    select_rank.js_on_change('value', cb_select_rank, cb_toggle_boxplot)
+
+    cb_toggle_label = CustomJS(
+        args=dict(xaxis=plot_groups.xaxis[0]),
+        code='''
+        if(this.active.includes(0)){
+            xaxis.major_label_text_font_size = "10px";
+            xaxis.major_tick_line_color="black";
+        }else{
+            xaxis.major_label_text_font_size = "0px";
+            xaxis.major_tick_line_color=null;
+        }
+        ''')
+    toggle_label.js_on_click(cb_toggle_label)
+
+
+    cb_toggle_legend = CustomJS(
+        args=dict(legend_plot_groups=legend_plot_groups),
+        code='''
+        if(this.active.includes(0)){
+            legend_plot_groups.visible = true;
+        }else{
+            legend_plot_groups.visible = false;
+        }
+        ''')
+    toggle_legend.js_on_click(cb_toggle_legend)
 
 
     layout = column([row(table_config, column(*widgets_config)),
@@ -1027,14 +1084,29 @@ def CustomJS_toggle_boxplot(multiselect_groups, view_groups, cds_target, cds_con
             for(group in groups_values){
                 const sorted_arr = groups_values[group].sort((a, b) => a - b);
                 cds_boxplot.data["index"].push(group);
-                cds_boxplot.data["lower"].push(quantile(sorted_arr, 0));
-                cds_boxplot.data["q1"].push(quantile(sorted_arr, .25));
+
+                const q1 = quantile(sorted_arr, .25);
+                const q3 = quantile(sorted_arr, .75);
+
+                var lower = q1 - (1.5 * (q3-q1)); // considering outliers IQR*1.5
+                if(lower < quantile(sorted_arr, 0)){
+                    lower = quantile(sorted_arr, 0);
+                }
+
+                var upper = q3 + (1.5 * (q3-q1)); // considering outliers IQR*1.5
+                if(upper > quantile(sorted_arr, 1)){
+                    upper = quantile(sorted_arr, 1)
+                }
+
+                cds_boxplot.data["lower"].push(lower);
+                cds_boxplot.data["q1"].push(q1);
                 cds_boxplot.data["q2"].push(quantile(sorted_arr, .50));
-                cds_boxplot.data["q3"].push(quantile(sorted_arr, .75));
-                cds_boxplot.data["upper"].push(quantile(sorted_arr, 1));
+                cds_boxplot.data["q3"].push(q3);
+                cds_boxplot.data["upper"].push(upper);
             }
 
         }
+
         cds_boxplot.change.emit();
 
         ''')

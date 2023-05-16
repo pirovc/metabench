@@ -65,7 +65,8 @@ rule ganon_classify:
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
-        args = lambda wildcards: str2args(wildcards.b_args)
+        args = lambda wildcards: str2args(wildcards.b_args),
+        reassign = lambda wildcards: 1 if "--reassign" in wildcards.b_args else 0 
     shell:
         """
         if [[ -z "{params.input_fq2}" ]]; then # single-end
@@ -87,6 +88,10 @@ rule ganon_classify:
                                {params.fixed_args} \
                                {params.args} > {log} 2>&1
         fi
+
+        if [[ "{params.reassign}" -eq "1" ]]; then
+            mv {params.outprefix}.all {params.outprefix}.lca
+        fi 
         """
 
 rule ganon_classify_format:
