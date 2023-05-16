@@ -42,7 +42,7 @@ rule kraken2_build_size:
     output:
         "kraken2/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --block-size=1 {input} > {output}"  # output in bytes
+        "du --bytes --dereference {input} > {output}"  # output in bytes
 
 rule kraken2_classify:
     input:

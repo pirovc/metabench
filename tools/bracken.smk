@@ -28,7 +28,7 @@ rule bracken_build_size:
     output:
         "bracken/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --block-size=1 --dereference {input} > {output}"  # output in bytes
+        "du --bytes --dereference {input} > {output}"  # output in bytes
 
 
 rule bracken_profiling:
