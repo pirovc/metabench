@@ -259,7 +259,7 @@ def plot_bench(report, tables, default_ranks, tools, rnd_names):
     select_metric.js_on_change('value', cb_select_metric)
 
     # trigger changes on checkboxes table
-    cds_config.selected.js_on_change('indices', cb_multiselect_groups)
+    cds_config.selected.js_on_change('indices', cb_multiselect_groups, cb_toggle_boxplot)
 
     cb_toggle_label = CustomJS(
         args=dict(xaxis=plot_groups.xaxis[0]),
@@ -521,7 +521,8 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
     cb_multiselect_groups = CustomJS_multiselect(cds_config, plot_groups, multiselect_groups, multiselect_markers, multiselect_colors, sort_groups)    
     multiselect_groups.js_on_change('value', cb_multiselect_groups, cb_toggle_boxplot)
-    cds_config.selected.js_on_change('indices', cb_multiselect_groups) # trigger changes on checkboxes table
+    
+    cds_config.selected.js_on_change('indices', cb_multiselect_groups, cb_toggle_boxplot) # trigger changes on checkboxes table
     sort_groups.js_on_change('value', cb_multiselect_groups)
     
     cb_multiselect_markers_color = CustomJS(
