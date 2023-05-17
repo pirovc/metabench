@@ -47,7 +47,7 @@ rule bench_binning:
                                     "binning_arguments": str2args(wildcards.b_args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, report="binning", category="benchmark", config = params.config), output.json)
+        json_write(json_benchmark(input.bench, report="binning", config = params.config), output.json)
 
 rule bench_profiling:
     input:
@@ -64,4 +64,4 @@ rule bench_profiling:
                                     "profiling_arguments": str2args(wildcards.p_args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, report="profiling", category="benchmark", config = params.config), output.json)
+        json_write(json_benchmark(input.bench, report="profiling", config = params.config), output.json)

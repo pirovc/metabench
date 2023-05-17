@@ -39,10 +39,10 @@ rule bench:
                                     "database_arguments": str2args(wildcards.args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers][wildcards.dtbs]["fixed_args"])}
     run:
-        out_json = json_benchmark(input.bench, report="build", category="benchmark", config=params.config)
-        out_json["metrics"]["total_size_bytes"] = 0
+        out_json = json_benchmark(input.bench, report="build", config=params.config)
+        out_json["bench"]["total_size_bytes"] = 0
         with open(input.fsize, "r") as file:
             for line in file:
                 s, f = line.rstrip().split("\t")
-                out_json["metrics"]["total_size_bytes"] += int(s)
+                out_json["bench"]["total_size_bytes"] += int(s)
         json_write(out_json, output.json)

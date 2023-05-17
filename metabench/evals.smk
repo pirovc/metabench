@@ -27,7 +27,7 @@ def input_all():
 
 rule all:
     input:
-        expand("{i}.{ext}", i=input_all(), ext=["evals.json"])
+        expand("{i}.{ext}", i=input_all(), ext=["bench.json", "updated_json"])
 
 
 rule evals_binning_script:
@@ -60,10 +60,11 @@ rule evals_binning_script:
 
 rule evals_binning:
     input:
+        bench_json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.json",
         cumu_json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.cumu.json",
         rank_json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.rank.json"
     output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.json"
+        flag_update = touch("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.updated_json")
     params:
         config = lambda wildcards: {"tool": wildcards.tool,
                                     "version": wildcards.vers,
@@ -72,11 +73,11 @@ rule evals_binning:
                                     "database_arguments": str2args(wildcards.dtbs_args),
                                     "binning_arguments": str2args(wildcards.b_args)}
     run:
-        out_json = json_default(report="binning", category="evals", config=params.config)
-        out_json["metrics"] = {}
-        out_json["metrics"]["cumulative-based"] = json_load(input.cumu_json)
-        out_json["metrics"]["rank-based"] = json_load(input.rank_json)
-        json_write(out_json, output.json)
+        out_json = json_load(input.bench_json)
+        out_json["evals"] = {}
+        out_json["evals"]["cumulative-based"] = json_load(input.cumu_json)
+        out_json["evals"]["rank-based"] = json_load(input.rank_json)
+        json_write(out_json, input.bench_json)
 
 
 rule evals_profiling_script:
@@ -109,9 +110,10 @@ rule evals_profiling_script:
 
 rule evals_profiling:
     input:
+        bench_json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.json",
         json_tmp = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.evals.tmp.json"
     output:
-        json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.evals.json"
+        flag_update = touch("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.updated_json")
     params:
         config = lambda wildcards: {"tool": wildcards.tool,
                                     "version": wildcards.vers,
@@ -121,7 +123,8 @@ rule evals_profiling:
                                     "binning_arguments": str2args(wildcards.b_args),
                                     "profiling_arguments": str2args(wildcards.p_args)}
     run:
-        out_json = json_default(report="profiling", category="evals", config=params.config)
-        out_json["metrics"] = json_load(input.json_tmp)
-        json_write(out_json, output.json)
+        out_json = json_load(input.bench_json)
+        out_json["evals"] = {}
+        out_json["evals"] = json_load(input.json_tmp)
+        json_write(out_json, input.bench_json)
 

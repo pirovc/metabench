@@ -81,18 +81,17 @@ def json_write(j, json_file):
         json.dump(j, file, indent=4)
 
 
-def json_default(report: str = "", category: str = "", config: dict = {}):
+def json_default(report: str = "", config: dict = {}):
     j = {}
     j["report"] = report
-    j["category"] = category
     j["created"] = datetime.datetime.now().isoformat()
     j["config"] = config
-    j["metrics"] = {}
+    j["bench"] = {}    
     return j
 
 
-def json_benchmark(bench_file, report: str = "", category: str = "", config: dict = {}):
-    out_json = json_default(report=report, category=category, config=config)
+def json_benchmark(bench_file, report: str = "", config: dict = {}):
+    out_json = json_default(report=report, config=config)
     out_json["config"] = config
 
     # Parse benchmark file and select fastest if more then one run
@@ -102,22 +101,23 @@ def json_benchmark(bench_file, report: str = "", category: str = "", config: dic
         for line in file:
             fields = line.rstrip().split("\t")
             bench_values.append(fields)
-
     selected_fields = bench_select(bench_values)
-    out_json["metrics"]["repeats"] = len(bench_values)
-    out_json["metrics"]["cpu_time_seconds"] = float(
+
+    out_json["bench"]["repeats"] = len(bench_values)
+    out_json["bench"]["cpu_time_seconds"] = float(
         selected_fields[0])
-    out_json["metrics"]["wall_clock_time"] = selected_fields[1]
-    out_json["metrics"]["mem_rss_mb"] = float(selected_fields[2])
-    out_json["metrics"]["mem_vms_mb"] = float(selected_fields[3])
-    out_json["metrics"]["mem_uss_mb"] = float(selected_fields[4])
-    out_json["metrics"]["mem_pss_mb"] = float(selected_fields[5])
-    out_json["metrics"]["io_in_bytes"] = float(selected_fields[6])
-    out_json["metrics"]["io_out_bytes"] = float(
+    #out_json["bench"]["wall_clock_time"] = selected_fields[1]
+    out_json["bench"]["mem_rss_mb"] = float(selected_fields[2])
+    out_json["bench"]["mem_vms_mb"] = float(selected_fields[3])
+    out_json["bench"]["mem_uss_mb"] = float(selected_fields[4])
+    out_json["bench"]["mem_pss_mb"] = float(selected_fields[5])
+    out_json["bench"]["io_in_bytes"] = float(selected_fields[6])
+    out_json["bench"]["io_out_bytes"] = float(
         selected_fields[7])
-    out_json["metrics"]["mean_cpu_load"] = float(
+    out_json["bench"]["mean_cpu_load"] = float(
         selected_fields[8])
-    out_json["metrics"]["cpu_load"] = float(selected_fields[9])
+    out_json["bench"]["cpu_load"] = float(selected_fields[9])
+    
     return out_json
 
 
