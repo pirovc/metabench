@@ -113,6 +113,10 @@ def main():
 
 def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
+    #
+    # CDS
+    #
+
     df_config = parse_df_config(tables[report]["config"], rnd_names)
     print(df_config)
     cds_config = ColumnDataSource(df_config)
@@ -125,8 +129,8 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     print(df_evals)
     cds_evals = ColumnDataSource(df_evals)
 
-    if df_evals.empty:
-        return column([])
+    #if df_evals.empty:
+    #    return column([])
 
     # BOXPLOT
     #        _________
@@ -138,21 +142,23 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     cds_boxplot = ColumnDataSource(dict(index=[], lower=[], q1=[], q2=[], q3=[], upper=[]))
 
 
+
+    #
+    # Vars
+    #
+
     metrics = []
     for metric in set(cds_evals.data["metric"]):
         v = metric.split("|")
         metrics.append((metric, v[1] + " (" + v[0] + ")"))
     metrics.sort(key=lambda a: a[1])
-    init_metric = next(iter(metrics))[0]
+    init_metric = next(iter(metrics))[0] if metrics else ""
     init_rank = "species" if "species" in default_ranks else default_ranks[-1]
 
     metrics_bench = list(sorted(set(cds_bench.data["metric"])))
     init_metric_bench = metrics_bench[0]
 
     smarkers, scolor = define_markers(df_config.shape[0])
-
-    # Hover tool for tooltips (all plots)
-    hover_tool = make_hover(cds_config, exclude_list=["index", "fixed_arguments"])
 
     #
     # Widgets
@@ -175,14 +181,14 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
     # Marker
     multiselect_markers = MultiSelect(title="Marker",
-        value=["name"], options=df_config.columns.to_list(), size=8)
+        value=["name"], options=df_config.columns.to_list(), size=8, width=150)
 
     # Color
     multiselect_colors = MultiSelect(title="Color",
-        value=["name"], options=df_config.columns.to_list(), size=8)
+        value=["name"], options=df_config.columns.to_list(), size=8, width=150)
 
     # Sort
-    sort_groups = Select(title="Sort (x):", value="name", options=df_config.columns.to_list())
+    select_sort_bench = Select(title="Sort (x):", value="name", options=df_config.columns.to_list())
     
     # Toggle options
     toggle_boxplot = CheckboxGroup(labels=["Show Boxplot"], active=[])
@@ -203,52 +209,46 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
 
     #
-    # DataTable
+    # Filters, View
     #
-    table_config, widgets_config = plot_datatable(cds_config, df_config)
 
+    # Table
     filter_config_evals = IndexFilter(indices=[])
     filter_config_bench = IndexFilter(indices=[])
 
-    cb_cds_config = CustomJS(
-        args=dict(cds_evals=cds_evals,
-                  cds_bench=cds_bench,
-                  filter_config_evals=filter_config_evals,
-                  filter_config_bench=filter_config_bench),
-        code="""
-        var indices = [];
-        for(let i = 0; i < cds_evals.length; i++){
-            if(this.indices.indexOf(cds_evals.data["config"][i]) > -1){
-                indices.push(i);
-            }
-        }
-        filter_config_evals.indices = indices;
-        cds_evals.change.emit();
+    # Ranks
+    filter_metric_ranks = GroupFilter(column_name="metric", group=init_metric)
+    view_ranks = CDSView(source=cds_evals, filters=[filter_metric_ranks, filter_config_evals])
 
-        var indices = [];
-        for(let i = 0; i < cds_bench.length; i++){
-            if(this.indices.indexOf(cds_bench.data["config"][i]) > -1){
-                indices.push(i);
-            }
-        }
-        filter_config_bench.indices = indices;
-        console.log(filter_config_bench.indices);
-        cds_bench.change.emit();
-        """)
-    cds_config.selected.js_on_change('indices', cb_cds_config)
+    # Compare
+    filter_rank_compare = GroupFilter(column_name="rank", group=init_rank)
+    filter_metric_compare = GroupFilter(column_name="metric", group=init_metric)
+    view_compare = CDSView(source=cds_evals, filters=[filter_rank_compare, filter_metric_compare, filter_config_evals])
+        
+    # Metric
+    filter_metric_ranks = GroupFilter(column_name="metric", group=init_metric)
+    view_ranks = CDSView(source=cds_evals, filters=[filter_metric_ranks, filter_config_evals])
 
+    # Bench
+    filter_metric_bench = GroupFilter(column_name="metric", group=init_metric_bench)
+    view_bench = CDSView(source=cds_bench, filters=[filter_config_bench, filter_metric_bench])
+
+    # Groups
+    filter_rank_groups = GroupFilter(column_name="rank", group=init_rank)
+    filter_metric_groups = GroupFilter(column_name="metric", group=init_metric)
+    view_groups = CDSView(source=cds_evals, filters=[filter_rank_groups, filter_metric_groups, filter_config_evals])
 
     #
-    # Plot Ranks
+    # Plots
     #
+
+    # Table
+    table_config, widgets_config = plot_datatable(cds_config, df_config)
+
+    # Ranks
     plot_ranks = figure(title="Ranks", x_range=default_ranks,
                         toolbar_location="above", tools=tools,
                         width=400, height=400)
-
-    filter_metric_ranks = GroupFilter(column_name="metric", group=init_metric)
-    view_ranks = CDSView(source=cds_evals, filters=[
-        filter_metric_ranks, filter_config_evals])
-
     plot_ranks.scatter(x="rank", y="value",
                        source=cds_evals,
                        view=view_ranks,
@@ -256,30 +256,12 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                        line_color="black")
-    plot_ranks.add_tools(hover_tool)
+    plot_ranks.add_tools(make_hover(cds_config, exclude_list=["index", "fixed_arguments"]))
     plot_ranks.yaxis.axis_label = init_metric
     plot_ranks.xaxis.major_label_orientation = "vertical"
 
-    cb_checkbox_ranks = CustomJS(
-        args=dict(plot_ranks=plot_ranks,
-                  default_ranks=default_ranks),
-        code="""
-        plot_ranks.x_range.factors = this.active.map(function(x) { return default_ranks[x]; });
-        """)
-    checkbox_ranks.js_on_click(cb_checkbox_ranks)
-
-    #
-    # Plot Compare
-    #
-    plot_compare = figure(
-        title="Compare", toolbar_location="above", tools=tools,
-        width=400, height=400)
-    
-    filter_rank_compare = GroupFilter(column_name="rank", group=init_rank)
-    filter_metric_compare = GroupFilter(
-        column_name="metric", group=init_metric)
-    view_compare = CDSView(source=cds_evals, filters=[
-        filter_rank_compare, filter_metric_compare, filter_config_evals])
+    # Compare
+    plot_compare = figure(title="Compare", toolbar_location="above", tools=tools, width=400, height=400)
 
     # Select metric for y-axis based on the stacked cds (assumes data is sorted)
     get_metric_x = CustomJSTransform(args=dict(cds_evals=cds_evals,
@@ -317,33 +299,17 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                          marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
                          fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                          line_color="black")
-    plot_compare.add_tools(hover_tool)
+    plot_compare.add_tools(make_hover(cds_config, exclude_list=["index", "fixed_arguments"]))
     plot_compare.xaxis.axis_label = init_metric
     plot_compare.yaxis.axis_label = init_metric
 
-    # Only triggers cds to apply transform on y-axis
-    cb_select_metric_x_compare = CustomJS(
-        args=dict(cds_evals=cds_evals,
-                  xaxis=plot_compare.xaxis[0]),
-        code="""
-        xaxis.axis_label = this.value;
-        cds_evals.change.emit();
-        """)
-    select_metric_x_compare.js_on_change('value', cb_select_metric_x_compare)
-
-    #
-    # Plot Group
-    #
+    # Groups
     plot_groups = figure(title="Groups",
                          x_range=FactorRange(factors=list(cds_config.data["name"])),
                          toolbar_location="above",
                          tools=tools,
-                         width=1000, height=800)
+                         width=1000, height=600)
 
-    filter_rank_groups = GroupFilter(column_name="rank", group=init_rank)
-    filter_metric_groups = GroupFilter(column_name="metric", group=init_metric)
-    view_groups = CDSView(source=cds_evals, filters=[
-        filter_rank_groups, filter_metric_groups, filter_config_evals])
 
     r = plot_groups.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
                         y="value",
@@ -353,7 +319,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
                         marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
                         fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                         line_color="black")
-    plot_groups.add_tools(hover_tool)
+    plot_groups.add_tools(make_hover(cds_config, exclude_list=["index", "fixed_arguments"]))
 
     # Activate hover only for scatter points (no boxplot)
     plot_groups.hover.renderers = [r]
@@ -374,7 +340,190 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     w = Whisker(base="index", upper="upper", lower="lower", source=cds_boxplot, line_color="black", line_width=2, line_alpha=0.5)
     w.upper_head.size = w.lower_head.size = 20
     plot_groups.add_layout(w)
-    
+
+
+    # Bench
+    plot_bench = figure(title="Benchmark",
+                        x_range=plot_groups.x_range,
+                        toolbar_location="above",
+                        tools=tools,
+                        width=plot_groups.width, height=400)
+    r = plot_bench.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
+                        y="value",
+                        source=cds_bench,
+                        view=view_bench,
+                        size=12,
+                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
+                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
+                        line_color="black")
+    plot_bench.add_tools(make_hover(cds_config, exclude_list=["index", "fixed_arguments"]))
+    plot_bench.xaxis.major_label_orientation = "vertical"
+    plot_bench.yaxis.axis_label = init_metric_bench
+
+
+    #
+    # Callbacks
+    # 
+
+    # Table
+    cb_cds_config = CustomJS(
+        args=dict(cds_evals=cds_evals,
+                  cds_bench=cds_bench,
+                  filter_config_evals=filter_config_evals,
+                  filter_config_bench=filter_config_bench),
+        code="""
+        var indices = [];
+        for(let i = 0; i < cds_evals.length; i++){
+            if(this.indices.indexOf(cds_evals.data["config"][i]) > -1){
+                indices.push(i);
+            }
+        }
+        filter_config_evals.indices = indices;
+        cds_evals.change.emit();
+
+        var indices = [];
+        for(let i = 0; i < cds_bench.length; i++){
+            if(this.indices.indexOf(cds_bench.data["config"][i]) > -1){
+                indices.push(i);
+            }
+        }
+        filter_config_bench.indices = indices;
+        console.log(filter_config_bench.indices);
+        cds_bench.change.emit();
+        """)
+    cds_config.selected.js_on_change('indices', cb_cds_config)
+
+    # Ranks
+    cb_checkbox_ranks = CustomJS(
+        args=dict(plot_ranks=plot_ranks,
+                  default_ranks=default_ranks),
+        code="""
+        plot_ranks.x_range.factors = this.active.map(function(x) { return default_ranks[x]; });
+        """)
+    checkbox_ranks.js_on_click(cb_checkbox_ranks)
+
+    # Compare
+
+    # Only triggers cds to apply transform on y-axis
+    cb_select_metric_x_compare = CustomJS(
+        args=dict(cds_evals=cds_evals,
+                  xaxis=plot_compare.xaxis[0]),
+        code="""
+        xaxis.axis_label = this.value;
+        cds_evals.change.emit();
+        """)
+    select_metric_x_compare.js_on_change('value', cb_select_metric_x_compare)
+
+    # Bench
+    cb_select_metric_bench = CustomJS(
+        args=dict(cds_bench=cds_bench,
+                  filter_metric_bench=filter_metric_bench,
+                  yaxis_bench=plot_bench.yaxis[0]),
+
+        code="""
+        filter_metric_bench.group = this.value;
+        yaxis_bench.axis_label = this.value;
+
+        cds_bench.change.emit();
+        """)
+    select_metric_bench.js_on_change('value', cb_select_metric_bench)
+
+    # Group
+
+
+    cb_multiselect_groups = CustomJS(
+        args=dict(cds_config=cds_config,
+                  plot_groups=plot_groups,
+                  multiselect_groups=multiselect_groups,
+                  multiselect_markers=multiselect_markers,
+                  multiselect_colors=multiselect_colors,
+                  select_sort_bench=select_sort_bench,
+                  plot_groups_legend=plot_groups.legend[0]),
+        code="""
+
+        // build index with combination of selected params
+        var factors_set = new Set();
+
+        var legend_idx = {};
+        for(let i = 0; i < cds_config.selected.indices.length; i++){
+            var group = "|";
+            for(let v = 0; v < multiselect_groups.value.length; v++){
+                group += cds_config.data[multiselect_groups.value[v]][cds_config.selected.indices[i]] + "|";
+            }
+            factors_set.add(group);
+
+
+            ///// LEGEND /////
+            // make groups out of two multiselect (marker and color)
+            var group_legend = "|"
+            for(let v = 0; v <= multiselect_markers.size; v++){
+                if(multiselect_markers.value.indexOf(multiselect_markers.options[v]) > -1 ||
+                   multiselect_colors.value.indexOf(multiselect_colors.options[v]) > -1){
+                    group_legend += cds_config.data[multiselect_markers.options[v]][cds_config.selected.indices[i]] + "|";
+                }
+            }
+            legend_idx[plot_groups_legend.items[cds_config.selected.indices[i]].index] = group_legend;
+            ///// LEGEND /////
+
+        }
+
+        ///// LEGEND /////
+        // very strange approach, the index is not followed, so I had to trick the plotting
+        for(let i = 0; i < cds_config.length; i++){
+            plot_groups_legend.items[i].visible=false;
+        }
+        var i = 0;
+        var already_plotted = new Array();
+        for(var key in legend_idx) {
+            if(already_plotted.indexOf(legend_idx[key]) == -1){
+                plot_groups_legend.items[i].label = legend_idx[key];
+                plot_groups_legend.items[i].visible = true;
+                already_plotted.push(legend_idx[key]);
+            }
+            i++;
+        }
+        ///// LEGEND /////
+
+        var factors = [...factors_set];
+        var sorted_factors = new Array();
+        const index_sort = multiselect_groups.value.indexOf(select_sort_bench.value);
+        // if sort by specific param (should be selected)
+        if(index_sort > -1){
+            var order = new Array();
+            for (var i = 0; i < factors.length; ++i){
+                order.push(factors[i].split("|")[index_sort+1]);
+            }
+
+            var idx = new Array(order.length);
+            for (var i = 0; i < idx.length; ++i){
+                idx[i] = i;
+            }
+            idx.sort((a, b) => order[a].localeCompare(order[b]));
+
+            for (var i = 0; i < idx.length; ++i){
+                sorted_factors.push(factors[idx[i]]);
+            }
+
+        }else{
+            // default sort
+            sorted_factors = factors.sort();
+        }
+
+        plot_groups.x_range.factors = sorted_factors;
+        """)
+
+    cb_multiselect_markers_color = CustomJS(
+        args=dict(cds_evals=cds_evals,
+                  cds_bench=cds_bench),
+        code="""
+        cds_evals.change.emit(); //first update the one with legend
+        cds_bench.change.emit();        
+        """)
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color, cb_multiselect_groups)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color, cb_multiselect_groups)
+    select_sort_bench.js_on_change('value', cb_multiselect_groups)
+
+
     cb_toggle_boxplot = CustomJS(
         args=dict(multiselect_groups=multiselect_groups,
                   view_groups=view_groups,
@@ -450,100 +599,8 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
     toggle_boxplot.js_on_click(cb_toggle_boxplot)
 
-    cb_multiselect_groups = CustomJS(
-        args=dict(cds_config=cds_config,
-                  plot_groups=plot_groups,
-                  multiselect_groups=multiselect_groups,
-                  multiselect_markers=multiselect_markers,
-                  multiselect_colors=multiselect_colors,
-                  sort_groups=sort_groups,
-                  plot_groups_legend=plot_groups.legend[0]),
-        code="""
-
-
-        // build index with combination of selected params
-        var factors_set = new Set();
-
-        var legend_idx = {};
-        for(let i = 0; i < cds_config.selected.indices.length; i++){
-            var group = "|";
-            for(let v = 0; v < multiselect_groups.value.length; v++){
-                group += cds_config.data[multiselect_groups.value[v]][cds_config.selected.indices[i]] + "|";
-            }
-            factors_set.add(group);
-
-
-            ///// LEGEND /////
-            // make groups out of two multiselect (marker and color)
-            var group_legend = "|"
-            for(let v = 0; v < multiselect_markers.size; v++){
-                if(multiselect_markers.value.indexOf(multiselect_markers.options[v]) > -1 ||
-                   multiselect_colors.value.indexOf(multiselect_colors.options[v]) > -1){
-                    group_legend += cds_config.data[multiselect_markers.options[v]][cds_config.selected.indices[i]] + "|";
-                }
-            }
-            legend_idx[plot_groups_legend.items[cds_config.selected.indices[i]].index] = group_legend;
-            ///// LEGEND /////
-
-        }
-
-        ///// LEGEND /////
-        // very strange approach, the index is not followed, so I had to trick the plotting
-        for(let i = 0; i < cds_config.length; i++){
-            plot_groups_legend.items[i].visible=false;
-        }
-        var i = 0;
-        var already_plotted = new Array();
-        for(var key in legend_idx) {
-            if(already_plotted.indexOf(legend_idx[key]) == -1){
-                plot_groups_legend.items[i].label = legend_idx[key];
-                plot_groups_legend.items[i].visible = true;
-                already_plotted.push(legend_idx[key]);
-            }
-            i++;
-        }
-        ///// LEGEND /////
-
-        var factors = [...factors_set];
-        var sorted_factors = new Array();
-        const index_sort = multiselect_groups.value.indexOf(sort_groups.value);
-        // if sort by specific param (should be selected)
-        if(index_sort > -1){
-            var order = new Array();
-            for (var i = 0; i < factors.length; ++i){
-                order.push(factors[i].split("|")[index_sort+1]);
-            }
-
-            var idx = new Array(order.length);
-            for (var i = 0; i < idx.length; ++i){
-                idx[i] = i;
-            }
-            idx.sort((a, b) => order[a].localeCompare(order[b]));
-
-            for (var i = 0; i < idx.length; ++i){
-                sorted_factors.push(factors[idx[i]]);
-            }
-
-        }else{
-            // default sort
-            sorted_factors = factors.sort();
-        }
-
-        plot_groups.x_range.factors = sorted_factors;
-        """)
-
     multiselect_groups.js_on_change('value', cb_multiselect_groups, cb_toggle_boxplot)
-    
     cds_config.selected.js_on_change('indices', cb_multiselect_groups, cb_toggle_boxplot) # trigger changes on checkboxes table
-    sort_groups.js_on_change('value', cb_multiselect_groups)
-    
-    cb_multiselect_markers_color = CustomJS(
-        args=dict(cds_evals=cds_evals),
-        code="""
-        cds_evals.change.emit();
-        """)
-    multiselect_markers.js_on_change('value', cb_multiselect_markers_color, cb_multiselect_groups)
-    multiselect_colors.js_on_change('value', cb_multiselect_markers_color, cb_multiselect_groups)
 
     cb_radio_ranges = CustomJS(
         args=dict(radio_ranges=radio_ranges,
@@ -668,7 +725,6 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         ''')
     toggle_label.js_on_click(cb_toggle_label)
 
-
     cb_toggle_legend = CustomJS(
         args=dict(legend_plot_groups=legend_plot_groups),
         code='''
@@ -680,61 +736,22 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         ''')
     toggle_legend.js_on_click(cb_toggle_legend)
 
-    #
-    # Plot Bench
-    #
-    plot_bench = figure(title="Benchmark",
-                         x_range=plot_groups.x_range,
-                         toolbar_location="above",
-                         tools=tools,
-                         width=400, height=400)
-    
-    filter_metric_bench = GroupFilter(column_name="metric", group=init_metric_bench)
-
-    view_bench = CDSView(source=cds_bench, filters=[filter_config_bench, filter_metric_bench])
-
-    plot_bench.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
-                        y="value",
-                        source=cds_bench,
-                        view=view_bench,
-                        size=12,
-                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
-                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
-                        line_color="black")
-    plot_bench.add_tools(hover_tool)
-    plot_bench.xaxis.major_label_orientation = "vertical"
-    plot_bench.yaxis.axis_label = init_metric_bench
-
-    cb_select_metric_bench = CustomJS(
-        args=dict(cds_bench=cds_bench,
-                  filter_metric_bench=filter_metric_bench,
-                  yaxis_bench=plot_bench.yaxis[0]),
-
-        code="""
-        filter_metric_bench.group = this.value;
-        yaxis_bench.axis_label = this.value;
-
-        cds_bench.change.emit();
-        """)
-    
-    select_metric_bench.js_on_change('value', cb_select_metric_bench)
-
     layout = column([row(table_config, column(*widgets_config)),
-                     row([plot_groups, 
+                     row([column([plot_groups, 
+                                  plot_bench
+                                 ]),
                           column([select_metric,
                                   select_rank,
                                   radio_ranges,
                                   multiselect_groups,
-                                  multiselect_markers,
-                                  multiselect_colors,
-                                  sort_groups,
+                                  row([multiselect_markers, multiselect_colors]),
+                                  select_sort_bench,
                                   toggle_boxplot,
                                   toggle_legend,
-                                  toggle_label
-                                 ]),
-                          column([plot_bench,
+                                  toggle_label,
                                   select_metric_bench,
-                                  plot_compare,
+                                 ]),
+                          column([plot_compare,
                                   select_metric_x_compare,
                                   plot_ranks,
                                   checkbox_ranks]),
