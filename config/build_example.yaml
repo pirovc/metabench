@@ -14,11 +14,13 @@ dbs:
     extension: ".fna.gz"
     taxonomy: "ncbi"
     taxonomy_files: "/misc/files/taxdump.tar.gz"
+    assembly_summary: "/files/assembly_summary.txt"
   "database99":
     folder: "/where/is/the/db99/"
     extension: ".fna.gz"
     taxonomy: "ncbi"
     taxonomy_files: "/misc/files/taxdump.tar.gz"
+    assembly_summary: "/files/assembly_summary.txt"
 
 run:
    toolA:

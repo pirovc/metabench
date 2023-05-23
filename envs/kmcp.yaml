@@ -3,4 +3,4 @@ channels:
  - bioconda
  - conda-forge
 dependencies:
- - bracken=2.8
+ - kmcp=0.9.2

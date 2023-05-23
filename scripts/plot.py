@@ -63,7 +63,7 @@ def main():
             tables[t][e] = pd.DataFrame()
 
 
-    for pjson in parsed_json.values():
+    for p, pjson in parsed_json.items():
         rep_type = pjson["report"]
 
         # Parse config element
@@ -71,11 +71,14 @@ def main():
 
         # Parse bench element
         # concat by rank and get same index
+        
         tables[rep_type]["bench"] = pd.concat([tables[rep_type]["bench"], load_elements(pjson["bench"])], axis=1, ignore_index=True)
 
         # Load evals if present
         if "evals" in pjson and pjson["evals"]:
             tables[rep_type]["evals"] = pd.concat([tables[rep_type]["evals"], load_elements(pjson["evals"])], axis=1, ignore_index=True)
+        else:
+            print(p)
 
     # for t in report_types:
     #     for e in report_elements:
