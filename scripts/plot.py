@@ -132,19 +132,6 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     print(df_evals)
     cds_evals = ColumnDataSource(df_evals)
 
-    #if df_evals.empty:
-    #    return column([])
-
-    # BOXPLOT
-    #        _________
-    #       |     |   |
-    #  |----|     |   |--|
-    #       |_____|___|
-    # lower q1   q2   q3 upper
-    #
-    cds_boxplot = ColumnDataSource(dict(index=[], lower=[], q1=[], q2=[], q3=[], upper=[]))
-
-
 
     #
     # Vars
@@ -191,7 +178,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         value=["name"], options=df_config.columns.to_list(), size=8, width=150)
 
     # Sort
-    select_sort_bench = Select(title="Sort (x):", value="name", options=df_config.columns.to_list())
+    select_sort = Select(title="Sort (x):", value="name", options=df_config.columns.to_list())
     
     # Toggle options
     toggle_boxplot = CheckboxGroup(labels=["Show Boxplot"], active=[])
@@ -306,63 +293,13 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     plot_compare.xaxis.axis_label = init_metric
     plot_compare.yaxis.axis_label = init_metric
 
+
     # Groups
-    plot_groups = figure(title="Groups",
-                         x_range=FactorRange(factors=list(cds_config.data["name"])),
-                         toolbar_location="above",
-                         tools=tools,
-                         width=1000, height=600)
-
-
-    r = plot_groups.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
-                        y="value",
-                        source=cds_evals,
-                        view=view_groups,
-                        size=12,
-                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
-                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
-                        line_color="black")
-    plot_groups.add_tools(make_hover(cds_config, exclude_list=["index", "fixed_arguments"]))
-
-    # Activate hover only for scatter points (no boxplot)
-    plot_groups.hover.renderers = [r]
-
-    plot_groups.xaxis.major_label_orientation = "vertical"
-    plot_groups.yaxis.axis_label = init_metric
-
-    # LEGEND
-    legend_items = []
-    for i in cds_config.data["index"]:
-        legend_items.append(LegendItem(label=str(i), renderers=[r], index=i, visible=False))
-    legend_plot_groups = Legend(items=legend_items)
-    plot_groups.add_layout(legend_plot_groups, 'right')
-
-    # Boxplot (vbar + whisker)
-    plot_groups.vbar("index", 0.7, "q2", "q3", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
-    plot_groups.vbar("index", 0.7, "q1", "q2", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
-    w = Whisker(base="index", upper="upper", lower="lower", source=cds_boxplot, line_color="black", line_width=2, line_alpha=0.5)
-    w.upper_head.size = w.lower_head.size = 20
-    plot_groups.add_layout(w)
+    plot_groups, legend_plot_groups, cds_boxplot_groups = main_plot(tools, cds_config, cds_evals, view_groups, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric)
 
 
     # Bench
-    plot_bench = figure(title="Benchmark",
-                        x_range=plot_groups.x_range,
-                        toolbar_location="above",
-                        tools=tools,
-                        width=plot_groups.width, height=400)
-    r = plot_bench.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
-                        y="value",
-                        source=cds_bench,
-                        view=view_bench,
-                        size=12,
-                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
-                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
-                        line_color="black")
-    plot_bench.add_tools(make_hover(cds_config, exclude_list=["index", "fixed_arguments"]))
-    plot_bench.xaxis.major_label_orientation = "vertical"
-    plot_bench.yaxis.axis_label = init_metric_bench
-
+    plot_bench, legend_plot_bench, cds_boxplot_bench = main_plot(tools, cds_config, cds_bench, view_bench, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric)
 
     #
     # Callbacks
@@ -432,178 +369,17 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     select_metric_bench.js_on_change('value', cb_select_metric_bench)
 
     # Group
+    cb_multiselect_groups, cb_multiselect_markers_color_groups, cb_toggle_boxplot_groups, cb_toggle_label_groups, cb_toggle_legend_groups = main_callbacks(cds_config, cds_evals, plot_groups, view_groups, legend_plot_groups, cds_boxplot_groups, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot)
 
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_groups, cb_multiselect_groups)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_groups, cb_multiselect_groups)
+    multiselect_groups.js_on_change('value', cb_multiselect_groups, cb_toggle_boxplot_groups)
+    select_sort.js_on_change('value', cb_multiselect_groups)
+    cds_config.selected.js_on_change('indices', cb_multiselect_groups, cb_toggle_boxplot_groups)
+    toggle_boxplot.js_on_click(cb_toggle_boxplot_groups)
+    toggle_label.js_on_click(cb_toggle_label_groups)
+    toggle_legend.js_on_click(cb_toggle_legend_groups)
 
-    cb_multiselect_groups = CustomJS(
-        args=dict(cds_config=cds_config,
-                  plot_groups=plot_groups,
-                  multiselect_groups=multiselect_groups,
-                  multiselect_markers=multiselect_markers,
-                  multiselect_colors=multiselect_colors,
-                  select_sort_bench=select_sort_bench,
-                  plot_groups_legend=plot_groups.legend[0]),
-        code="""
-
-        // build index with combination of selected params
-        var factors_set = new Set();
-
-        var legend_idx = {};
-        for(let i = 0; i < cds_config.selected.indices.length; i++){
-            var group = "|";
-            for(let v = 0; v < multiselect_groups.value.length; v++){
-                group += cds_config.data[multiselect_groups.value[v]][cds_config.selected.indices[i]] + "|";
-            }
-            factors_set.add(group);
-
-
-            ///// LEGEND /////
-            // make groups out of two multiselect (marker and color)
-            var group_legend = "|"
-            for(let v = 0; v <= multiselect_markers.size; v++){
-                if(multiselect_markers.value.indexOf(multiselect_markers.options[v]) > -1 ||
-                   multiselect_colors.value.indexOf(multiselect_colors.options[v]) > -1){
-                    group_legend += cds_config.data[multiselect_markers.options[v]][cds_config.selected.indices[i]] + "|";
-                }
-            }
-            legend_idx[plot_groups_legend.items[cds_config.selected.indices[i]].index] = group_legend;
-            ///// LEGEND /////
-
-        }
-
-        ///// LEGEND /////
-        // very strange approach, the index is not followed, so I had to trick the plotting
-        for(let i = 0; i < cds_config.length; i++){
-            plot_groups_legend.items[i].visible=false;
-        }
-        var i = 0;
-        var already_plotted = new Array();
-        for(var key in legend_idx) {
-            if(already_plotted.indexOf(legend_idx[key]) == -1){
-                plot_groups_legend.items[i].label = legend_idx[key];
-                plot_groups_legend.items[i].visible = true;
-                already_plotted.push(legend_idx[key]);
-            }
-            i++;
-        }
-        ///// LEGEND /////
-
-        var factors = [...factors_set];
-        var sorted_factors = new Array();
-        const index_sort = multiselect_groups.value.indexOf(select_sort_bench.value);
-        // if sort by specific param (should be selected)
-        if(index_sort > -1){
-            var order = new Array();
-            for (var i = 0; i < factors.length; ++i){
-                order.push(factors[i].split("|")[index_sort+1]);
-            }
-
-            var idx = new Array(order.length);
-            for (var i = 0; i < idx.length; ++i){
-                idx[i] = i;
-            }
-            idx.sort((a, b) => order[a].localeCompare(order[b]));
-
-            for (var i = 0; i < idx.length; ++i){
-                sorted_factors.push(factors[idx[i]]);
-            }
-
-        }else{
-            // default sort
-            sorted_factors = factors.sort();
-        }
-
-        plot_groups.x_range.factors = sorted_factors;
-        """)
-
-    cb_multiselect_markers_color = CustomJS(
-        args=dict(cds_evals=cds_evals,
-                  cds_bench=cds_bench),
-        code="""
-        cds_evals.change.emit(); //first update the one with legend
-        cds_bench.change.emit();        
-        """)
-    multiselect_markers.js_on_change('value', cb_multiselect_markers_color, cb_multiselect_groups)
-    multiselect_colors.js_on_change('value', cb_multiselect_markers_color, cb_multiselect_groups)
-    select_sort_bench.js_on_change('value', cb_multiselect_groups)
-
-
-    cb_toggle_boxplot = CustomJS(
-        args=dict(multiselect_groups=multiselect_groups,
-                  view_groups=view_groups,
-                  cds_evals=cds_evals,
-                  cds_config=cds_config,
-                  cds_boxplot=cds_boxplot,
-                  toggle_boxplot=toggle_boxplot),
-        code='''
-        cds_boxplot.data = {"index": [], "lower": [], "q1": [], "q2": [], "q3": [], "upper": []};
-
-        if(toggle_boxplot.active.includes(0)){
-
-            // for each entry on cds_eval/cds_bench, get config + values on multiselect to rebuild
-            var groups_values = {};
-            for(let i = 0; i < view_groups._indices.length; i++){
-                const idx_evals = view_groups._indices[i];
-                const val = cds_evals.data["value"][idx_evals];
-                
-                var group = "|";
-                for(let v = 0; v < multiselect_groups.value.length; v++){
-                     group += cds_config.data[multiselect_groups.value[v]][cds_evals.data["config"][idx_evals]] + "|"
-                }
-                
-                if(!(group in groups_values)){
-                    groups_values[group] = new Array();
-                }
-                groups_values[group].push(val);
-
-            }
-
-            // quantile function
-            const quantile = (sorted, q) => {
-                // requires sorted array
-                const pos = (sorted.length - 1) * q;
-                const base = Math.floor(pos);
-                const rest = pos - base;
-                if (sorted[base + 1] !== undefined) {
-                    return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
-                } else {
-                    return sorted[base];
-                }
-            };
-
-            for(group in groups_values){
-                const sorted_arr = groups_values[group].sort((a, b) => a - b);
-                cds_boxplot.data["index"].push(group);
-
-                const q1 = quantile(sorted_arr, .25);
-                const q3 = quantile(sorted_arr, .75);
-
-                var lower = q1 - (1.5 * (q3-q1)); // considering outliers IQR*1.5
-                if(lower < quantile(sorted_arr, 0)){
-                    lower = quantile(sorted_arr, 0);
-                }
-
-                var upper = q3 + (1.5 * (q3-q1)); // considering outliers IQR*1.5
-                if(upper > quantile(sorted_arr, 1)){
-                    upper = quantile(sorted_arr, 1)
-                }
-
-                cds_boxplot.data["lower"].push(lower);
-                cds_boxplot.data["q1"].push(q1);
-                cds_boxplot.data["q2"].push(quantile(sorted_arr, .50));
-                cds_boxplot.data["q3"].push(q3);
-                cds_boxplot.data["upper"].push(upper);
-            }
-
-        }
-
-        cds_boxplot.change.emit();
-
-        ''')
-
-    toggle_boxplot.js_on_click(cb_toggle_boxplot)
-
-    multiselect_groups.js_on_change('value', cb_multiselect_groups, cb_toggle_boxplot)
-    cds_config.selected.js_on_change('indices', cb_multiselect_groups, cb_toggle_boxplot) # trigger changes on checkboxes table
 
     cb_radio_ranges = CustomJS(
         args=dict(radio_ranges=radio_ranges,
@@ -702,7 +478,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         //console.log(Bokeh.documents[0].get_model_by_id('my_select'))
         //radio_ranges.trigger_event(({"event_name": "click"}))
         """)
-    select_metric.js_on_change('value', cb_select_metric, cb_toggle_boxplot)
+    select_metric.js_on_change('value', cb_select_metric, cb_toggle_boxplot_groups)
 
     cb_select_rank = CustomJS(
         args=dict(cds_evals=cds_evals,
@@ -713,52 +489,49 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         filter_rank_groups.group = this.value;
         cds_evals.change.emit();
         """)
-    select_rank.js_on_change('value', cb_select_rank, cb_toggle_boxplot)
+    select_rank.js_on_change('value', cb_select_rank, cb_toggle_boxplot_groups)
 
-    cb_toggle_label = CustomJS(
-        args=dict(xaxis=plot_groups.xaxis[0]),
-        code='''
-        if(this.active.includes(0)){
-            xaxis.major_label_text_font_size = "10px";
-            xaxis.major_tick_line_color="black";
-        }else{
-            xaxis.major_label_text_font_size = "0px";
-            xaxis.major_tick_line_color=null;
-        }
-        ''')
-    toggle_label.js_on_click(cb_toggle_label)
 
-    cb_toggle_legend = CustomJS(
-        args=dict(legend_plot_groups=legend_plot_groups),
-        code='''
-        if(this.active.includes(0)){
-            legend_plot_groups.visible = true;
-        }else{
-            legend_plot_groups.visible = false;
-        }
-        ''')
-    toggle_legend.js_on_click(cb_toggle_legend)
+    # Bench
+    cb_multiselect_bench, cb_multiselect_markers_color_bench, cb_toggle_boxplot_bench, cb_toggle_label_bench, cb_toggle_legend_bench = main_callbacks(cds_config, cds_bench, plot_bench, view_bench, legend_plot_bench, cds_boxplot_bench, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot)
+
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_bench)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_bench)
+    multiselect_groups.js_on_change('value', cb_multiselect_bench, cb_toggle_boxplot_bench)
+    select_sort.js_on_change('value', cb_multiselect_bench)
+    cds_config.selected.js_on_change('indices', cb_multiselect_bench, cb_toggle_boxplot_bench)
+    toggle_boxplot.js_on_click(cb_toggle_boxplot_bench)
+    toggle_label.js_on_click(cb_toggle_label_bench)
+    toggle_legend.js_on_click(cb_toggle_legend_bench)
+
+
+    tabs = []
+    if not df_evals.empty:
+        evals_layout = column([row([select_metric,select_rank,radio_ranges]),
+                               plot_groups,
+                               row(column([select_metric_x_compare,
+                                           plot_compare]),
+                                   plot_ranks,
+                                   checkbox_ranks)])
+        tabs.append(Panel(child=evals_layout, title="Metrics"))
+
+    bench_layout = column(select_metric_bench,
+                          plot_bench)
+
+    tabs.append(Panel(child=bench_layout, title="Benchmark"))
+
 
     layout = column([row(table_config, column(*widgets_config)),
-                     row([column([plot_groups, 
-                                  plot_bench
-                                 ]),
-                          column([select_metric,
-                                  select_rank,
-                                  radio_ranges,
-                                  multiselect_groups,
+                     row([Tabs(tabs=tabs),
+                          column([multiselect_groups,
                                   row([multiselect_markers, multiselect_colors]),
-                                  select_sort_bench,
+                                  select_sort,
                                   toggle_boxplot,
                                   toggle_legend,
-                                  toggle_label,
-                                  select_metric_bench,
-                                 ]),
-                          column([plot_compare,
-                                  select_metric_x_compare,
-                                  plot_ranks,
-                                  checkbox_ranks]),
-                    ])])
+                                  toggle_label]),
+                         ])
+                    ])
+
 
     return layout
 
@@ -1007,6 +780,243 @@ def CustomJSTransform_get_markercolor(slist, cds_config, multiselect):
                                    return xs.map(function(x) { return markers_dict[x]; });
                                    """)
     return get_marker
+
+
+def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric):
+
+    # BOXPLOT
+    #        _________
+    #       |     |   |
+    #  |----|     |   |--|
+    #       |_____|___|
+    # lower q1   q2   q3 upper
+    #
+    cds_boxplot = ColumnDataSource(dict(index=[], lower=[], q1=[], q2=[], q3=[], upper=[]))
+
+    plot = figure(title="Groups",
+                         x_range=FactorRange(factors=list(cds_config.data["name"])),
+                         toolbar_location="above",
+                         tools=tools,
+                         width=1400, height=600)
+
+
+    r = plot.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
+                        y="value",
+                        source=cds_target,
+                        view=view_target,
+                        size=12,
+                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
+                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
+                        line_color="black")
+    plot.add_tools(make_hover(cds_config, exclude_list=["index", "fixed_arguments"]))
+
+    # Activate hover only for scatter points (no boxplot)
+    plot.hover.renderers = [r]
+
+    plot.xaxis.major_label_orientation = "vertical"
+    plot.yaxis.axis_label = init_metric
+
+    # LEGEND
+    legend_items = []
+    for i in cds_config.data["index"]:
+        legend_items.append(LegendItem(label=str(i), renderers=[r], index=i, visible=False))
+    legend_plot = Legend(items=legend_items)
+    plot.add_layout(legend_plot, 'right')
+
+    # Boxplot (vbar + whisker)
+    plot.vbar("index", 0.7, "q2", "q3", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
+    plot.vbar("index", 0.7, "q1", "q2", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
+    w = Whisker(base="index", upper="upper", lower="lower", source=cds_boxplot, line_color="black", line_width=2, line_alpha=0.5)
+    w.upper_head.size = w.lower_head.size = 20
+    plot.add_layout(w)
+
+    return plot, legend_plot, cds_boxplot
+
+def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot_target, cds_boxplot_target, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot):
+
+    cb_multiselect_target = CustomJS(
+        args=dict(cds_config=cds_config,
+                  plot_target=plot_target,
+                  multiselect_groups=multiselect_groups,
+                  multiselect_markers=multiselect_markers,
+                  multiselect_colors=multiselect_colors,
+                  select_sort=select_sort,
+                  plot_target_legend=plot_target.legend[0]),
+        code="""
+
+        // build index with combination of selected params
+        var factors_set = new Set();
+
+        var legend_idx = {};
+        for(let i = 0; i < cds_config.selected.indices.length; i++){
+            var group = "|";
+            for(let v = 0; v < multiselect_groups.value.length; v++){
+                group += cds_config.data[multiselect_groups.value[v]][cds_config.selected.indices[i]] + "|";
+            }
+            factors_set.add(group);
+
+
+            ///// LEGEND /////
+            // make groups out of two multiselect (marker and color)
+            var group_legend = "|"
+            for(let v = 0; v <= multiselect_markers.size; v++){
+                if(multiselect_markers.value.indexOf(multiselect_markers.options[v]) > -1 ||
+                   multiselect_colors.value.indexOf(multiselect_colors.options[v]) > -1){
+                    group_legend += cds_config.data[multiselect_markers.options[v]][cds_config.selected.indices[i]] + "|";
+                }
+            }
+            legend_idx[plot_target_legend.items[cds_config.selected.indices[i]].index] = group_legend;
+            ///// LEGEND /////
+
+        }
+
+        ///// LEGEND /////
+        // very strange approach, the index is not followed, so I had to trick the plotting
+        for(let i = 0; i < cds_config.length; i++){
+            plot_target_legend.items[i].visible=false;
+        }
+        var i = 0;
+        var already_plotted = new Array();
+        for(var key in legend_idx) {
+            if(already_plotted.indexOf(legend_idx[key]) == -1){
+                plot_target_legend.items[i].label = legend_idx[key];
+                plot_target_legend.items[i].visible = true;
+                already_plotted.push(legend_idx[key]);
+            }
+            i++;
+        }
+        ///// LEGEND /////
+
+        var factors = [...factors_set];
+        var sorted_factors = new Array();
+        const index_sort = multiselect_groups.value.indexOf(select_sort.value);
+        // if sort by specific param (should be selected)
+        if(index_sort > -1){
+            var order = new Array();
+            for (var i = 0; i < factors.length; ++i){
+                order.push(factors[i].split("|")[index_sort+1]);
+            }
+
+            var idx = new Array(order.length);
+            for (var i = 0; i < idx.length; ++i){
+                idx[i] = i;
+            }
+            idx.sort((a, b) => order[a].localeCompare(order[b]));
+
+            for (var i = 0; i < idx.length; ++i){
+                sorted_factors.push(factors[idx[i]]);
+            }
+
+        }else{
+            // default sort
+            sorted_factors = factors.sort();
+        }
+
+        plot_target.x_range.factors = sorted_factors;
+        """)
+
+    cb_toggle_boxplot = CustomJS(
+        args=dict(multiselect_groups=multiselect_groups,
+                  view_target=view_target,
+                  cds_target=cds_target,
+                  cds_config=cds_config,
+                  cds_boxplot_target=cds_boxplot_target,
+                  toggle_boxplot=toggle_boxplot),
+        code='''
+        cds_boxplot_target.data = {"index": [], "lower": [], "q1": [], "q2": [], "q3": [], "upper": []};
+
+        if(toggle_boxplot.active.includes(0)){
+
+            // for each entry on cds_eval/cds_bench, get config + values on multiselect to rebuild
+            var groups_values = {};
+            for(let i = 0; i < view_target._indices.length; i++){
+                const idx_target = view_target._indices[i];
+                const val = cds_target.data["value"][idx_target];
+                
+                var group = "|";
+                for(let v = 0; v < multiselect_groups.value.length; v++){
+                     group += cds_config.data[multiselect_groups.value[v]][cds_target.data["config"][idx_target]] + "|"
+                }
+                
+                if(!(group in groups_values)){
+                    groups_values[group] = new Array();
+                }
+                groups_values[group].push(val);
+
+            }
+
+            // quantile function
+            const quantile = (sorted, q) => {
+                // requires sorted array
+                const pos = (sorted.length - 1) * q;
+                const base = Math.floor(pos);
+                const rest = pos - base;
+                if (sorted[base + 1] !== undefined) {
+                    return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+                } else {
+                    return sorted[base];
+                }
+            };
+
+            for(group in groups_values){
+                const sorted_arr = groups_values[group].sort((a, b) => a - b);
+                cds_boxplot_target.data["index"].push(group);
+
+                const q1 = quantile(sorted_arr, .25);
+                const q3 = quantile(sorted_arr, .75);
+
+                var lower = q1 - (1.5 * (q3-q1)); // considering outliers IQR*1.5
+                if(lower < quantile(sorted_arr, 0)){
+                    lower = quantile(sorted_arr, 0);
+                }
+
+                var upper = q3 + (1.5 * (q3-q1)); // considering outliers IQR*1.5
+                if(upper > quantile(sorted_arr, 1)){
+                    upper = quantile(sorted_arr, 1)
+                }
+
+                cds_boxplot_target.data["lower"].push(lower);
+                cds_boxplot_target.data["q1"].push(q1);
+                cds_boxplot_target.data["q2"].push(quantile(sorted_arr, .50));
+                cds_boxplot_target.data["q3"].push(q3);
+                cds_boxplot_target.data["upper"].push(upper);
+            }
+
+        }
+
+        cds_boxplot_target.change.emit();
+
+        ''')
+
+    cb_toggle_label = CustomJS(
+        args=dict(xaxis=plot_target.xaxis[0]),
+        code='''
+        if(this.active.includes(0)){
+            xaxis.major_label_text_font_size = "10px";
+            xaxis.major_tick_line_color="black";
+        }else{
+            xaxis.major_label_text_font_size = "0px";
+            xaxis.major_tick_line_color=null;
+        }
+        ''')
+    
+    cb_toggle_legend = CustomJS(
+        args=dict(legend_plot_target=legend_plot_target),
+        code='''
+        if(this.active.includes(0)){
+            legend_plot_target.visible = true;
+        }else{
+            legend_plot_target.visible = false;
+        }
+        ''')
+
+    cb_multiselect_markers_color = CustomJS(
+        args=dict(cds_target=cds_target),
+        code="""
+        cds_target.change.emit();      
+        """)
+
+    return cb_multiselect_target, cb_multiselect_markers_color, cb_toggle_boxplot, cb_toggle_label, cb_toggle_legend
 
 
 if __name__ == "__main__":
