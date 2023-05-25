@@ -156,7 +156,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
 
     # Metric (y)
     select_metric = Select(
-        title="Metric (y):", value=init_metric, options=metrics)
+        title="Evaluation metric (y):", value=init_metric, options=metrics)
 
     # Rank
     select_rank = Select(
@@ -191,7 +191,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     
     # Metric (x)
     select_metric_x_compare = Select(
-        title="Metric (x):", value=init_metric, options=metrics)
+        title="Evaluation metric (x):", value=init_metric, options=metrics)
 
     # Rank checkboxes
     checkbox_ranks = CheckboxGroup(
@@ -219,14 +219,14 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     filter_metric_ranks = GroupFilter(column_name="metric", group=init_metric)
     view_ranks = CDSView(source=cds_evals, filters=[filter_metric_ranks, filter_config_evals])
 
+    # Evals
+    filter_rank_evals = GroupFilter(column_name="rank", group=init_rank)
+    filter_metric_evals = GroupFilter(column_name="metric", group=init_metric)
+    view_evals = CDSView(source=cds_evals, filters=[filter_rank_evals, filter_metric_evals, filter_config_evals])
+
     # Bench
     filter_metric_bench = GroupFilter(column_name="metric", group=init_metric_bench)
     view_bench = CDSView(source=cds_bench, filters=[filter_config_bench, filter_metric_bench])
-
-    # Groups
-    filter_rank_groups = GroupFilter(column_name="rank", group=init_rank)
-    filter_metric_groups = GroupFilter(column_name="metric", group=init_metric)
-    view_groups = CDSView(source=cds_evals, filters=[filter_rank_groups, filter_metric_groups, filter_config_evals])
 
     #
     # Plots
@@ -238,7 +238,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     # Ranks
     plot_ranks = figure(title="Ranks", x_range=default_ranks,
                         toolbar_location="above", tools=tools,
-                        width=400, height=400)
+                        width=600, height=600)
     plot_ranks.scatter(x="rank", y="value",
                        source=cds_evals,
                        view=view_ranks,
@@ -251,7 +251,7 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     plot_ranks.xaxis.major_label_orientation = "vertical"
 
     # Compare
-    plot_compare = figure(title="Compare", toolbar_location="above", tools=tools, width=400, height=400)
+    plot_compare = figure(title="Compare", toolbar_location="above", tools=tools, width=600, height=600)
 
     # Select metric for y-axis based on the stacked cds (assumes data is sorted)
     get_metric_x = CustomJSTransform(args=dict(cds_evals=cds_evals,
@@ -294,8 +294,8 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     plot_compare.yaxis.axis_label = init_metric
 
 
-    # Groups
-    plot_groups, legend_plot_groups, cds_boxplot_groups = main_plot(tools, cds_config, cds_evals, view_groups, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric)
+    # Evals
+    plot_evals, legend_plot_evals, cds_boxplot_evals = main_plot(tools, cds_config, cds_evals, view_evals, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric)
 
 
     # Bench
@@ -354,37 +354,23 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         """)
     select_metric_x_compare.js_on_change('value', cb_select_metric_x_compare)
 
-    # Bench
-    cb_select_metric_bench = CustomJS(
-        args=dict(cds_bench=cds_bench,
-                  filter_metric_bench=filter_metric_bench,
-                  yaxis_bench=plot_bench.yaxis[0]),
+    # Evals
+    cb_multiselect_groups_evals, cb_multiselect_markers_color_evals, cb_toggle_boxplot_evals, cb_toggle_label_evals, cb_toggle_legend_evals = main_callbacks(cds_config, cds_evals, plot_evals, view_evals, legend_plot_evals, cds_boxplot_evals, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot)
 
-        code="""
-        filter_metric_bench.group = this.value;
-        yaxis_bench.axis_label = this.value;
-
-        cds_bench.change.emit();
-        """)
-    select_metric_bench.js_on_change('value', cb_select_metric_bench)
-
-    # Group
-    cb_multiselect_groups, cb_multiselect_markers_color_groups, cb_toggle_boxplot_groups, cb_toggle_label_groups, cb_toggle_legend_groups = main_callbacks(cds_config, cds_evals, plot_groups, view_groups, legend_plot_groups, cds_boxplot_groups, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot)
-
-    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_groups, cb_multiselect_groups)
-    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_groups, cb_multiselect_groups)
-    multiselect_groups.js_on_change('value', cb_multiselect_groups, cb_toggle_boxplot_groups)
-    select_sort.js_on_change('value', cb_multiselect_groups)
-    cds_config.selected.js_on_change('indices', cb_multiselect_groups, cb_toggle_boxplot_groups)
-    toggle_boxplot.js_on_click(cb_toggle_boxplot_groups)
-    toggle_label.js_on_click(cb_toggle_label_groups)
-    toggle_legend.js_on_click(cb_toggle_legend_groups)
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_evals, cb_multiselect_groups_evals)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_evals, cb_multiselect_groups_evals)
+    multiselect_groups.js_on_change('value', cb_multiselect_groups_evals, cb_toggle_boxplot_evals)
+    select_sort.js_on_change('value', cb_multiselect_groups_evals)
+    cds_config.selected.js_on_change('indices', cb_multiselect_groups_evals, cb_toggle_boxplot_evals)
+    toggle_boxplot.js_on_click(cb_toggle_boxplot_evals)
+    toggle_label.js_on_click(cb_toggle_label_evals)
+    toggle_legend.js_on_click(cb_toggle_legend_evals)
 
 
     cb_radio_ranges = CustomJS(
         args=dict(radio_ranges=radio_ranges,
                   cds_evals=cds_evals,
-                  y_range_groups=plot_groups.y_range,
+                  y_range_evals=plot_evals.y_range,
                   y_range_ranks=plot_ranks.y_range,
                   y_range_compare=plot_compare.y_range,
                   x_range_compare=plot_compare.x_range),
@@ -393,8 +379,8 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         
         if (radio_ranges.active==0){
             // auto (reset default)
-            y_range_groups._initial_start = null;
-            y_range_groups._initial_end = null;
+            y_range_evals._initial_start = null;
+            y_range_evals._initial_end = null;
 
             y_range_ranks._initial_start = null;
             y_range_ranks._initial_end = null;
@@ -410,10 +396,10 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         }else if(radio_ranges.active==1){
             // 0-1
             const spacer = 0.05;
-            y_range_groups._initial_start = 0-spacer;
-            y_range_groups._initial_end = 1+spacer;
-            y_range_groups.start = 0-spacer;
-            y_range_groups.end = 1+spacer;
+            y_range_evals._initial_start = 0-spacer;
+            y_range_evals._initial_end = 1+spacer;
+            y_range_evals.start = 0-spacer;
+            y_range_evals.end = 1+spacer;
 
             y_range_ranks._initial_start = 0-spacer;
             y_range_ranks._initial_end = 1+spacer;
@@ -432,10 +418,10 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         }else if(radio_ranges.active==2){
             // 0-100
             const spacer = 5;
-            y_range_groups._initial_start = 0-spacer;
-            y_range_groups._initial_end = 100+spacer;
-            y_range_groups.start = 0-spacer;
-            y_range_groups.end = 100+spacer;
+            y_range_evals._initial_start = 0-spacer;
+            y_range_evals._initial_end = 100+spacer;
+            y_range_evals.start = 0-spacer;
+            y_range_evals.end = 100+spacer;
 
             y_range_ranks._initial_start = 0-spacer;
             y_range_ranks._initial_end = 100+spacer;
@@ -458,10 +444,10 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         args=dict(cds_evals=cds_evals,
                   filter_metric_ranks=filter_metric_ranks,
                   filter_metric_compare=filter_metric_compare,
-                  filter_metric_groups=filter_metric_groups,
+                  filter_metric_evals=filter_metric_evals,
                   yaxis_ranks=plot_ranks.yaxis[0],
                   yaxis_compare=plot_compare.yaxis[0],
-                  yaxis_groups=plot_groups.yaxis[0]),
+                  yaxis_evals=plot_evals.yaxis[0]),
 
         code="""
         filter_metric_ranks.group = this.value;
@@ -470,50 +456,62 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
         filter_metric_compare.group = this.value;
         yaxis_compare.axis_label = this.value;
 
-        filter_metric_groups.group = this.value;
-        yaxis_groups.axis_label = this.value;
+        filter_metric_evals.group = this.value;
+        yaxis_evals.axis_label = this.value;
 
         cds_evals.change.emit();
 
         //console.log(Bokeh.documents[0].get_model_by_id('my_select'))
         //radio_ranges.trigger_event(({"event_name": "click"}))
         """)
-    select_metric.js_on_change('value', cb_select_metric, cb_toggle_boxplot_groups)
+    select_metric.js_on_change('value', cb_select_metric, cb_toggle_boxplot_evals)
 
     cb_select_rank = CustomJS(
         args=dict(cds_evals=cds_evals,
                   filter_rank_compare=filter_rank_compare,
-                  filter_rank_groups=filter_rank_groups),
+                  filter_rank_evals=filter_rank_evals),
         code="""
         filter_rank_compare.group = this.value;
-        filter_rank_groups.group = this.value;
+        filter_rank_evals.group = this.value;
         cds_evals.change.emit();
         """)
-    select_rank.js_on_change('value', cb_select_rank, cb_toggle_boxplot_groups)
+    select_rank.js_on_change('value', cb_select_rank, cb_toggle_boxplot_evals)
 
 
     # Bench
-    cb_multiselect_bench, cb_multiselect_markers_color_bench, cb_toggle_boxplot_bench, cb_toggle_label_bench, cb_toggle_legend_bench = main_callbacks(cds_config, cds_bench, plot_bench, view_bench, legend_plot_bench, cds_boxplot_bench, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot)
+    cb_multiselect_groups_bench, cb_multiselect_markers_color_bench, cb_toggle_boxplot_bench, cb_toggle_label_bench, cb_toggle_legend_bench = main_callbacks(cds_config, cds_bench, plot_bench, view_bench, legend_plot_bench, cds_boxplot_bench, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot)
 
-    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_bench)
-    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_bench)
-    multiselect_groups.js_on_change('value', cb_multiselect_bench, cb_toggle_boxplot_bench)
-    select_sort.js_on_change('value', cb_multiselect_bench)
-    cds_config.selected.js_on_change('indices', cb_multiselect_bench, cb_toggle_boxplot_bench)
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_groups_bench)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_groups_bench)
+    multiselect_groups.js_on_change('value', cb_multiselect_groups_bench, cb_toggle_boxplot_bench)
+    select_sort.js_on_change('value', cb_multiselect_groups_bench)
+    cds_config.selected.js_on_change('indices', cb_multiselect_groups_bench, cb_toggle_boxplot_bench)
     toggle_boxplot.js_on_click(cb_toggle_boxplot_bench)
     toggle_label.js_on_click(cb_toggle_label_bench)
     toggle_legend.js_on_click(cb_toggle_legend_bench)
+    
+    # Bench
+    cb_select_metric_bench = CustomJS(
+        args=dict(cds_bench=cds_bench,
+                  filter_metric_bench=filter_metric_bench,
+                  yaxis_bench=plot_bench.yaxis[0]),
 
+        code="""
+        filter_metric_bench.group = this.value;
+        yaxis_bench.axis_label = this.value;
+        cds_bench.change.emit();
+        """)
+    select_metric_bench.js_on_change('value', cb_select_metric_bench, cb_toggle_boxplot_bench)
 
     tabs = []
     if not df_evals.empty:
         evals_layout = column([row([select_metric,select_rank,radio_ranges]),
-                               plot_groups,
-                               row(column([select_metric_x_compare,
-                                           plot_compare]),
+                               plot_evals,
+                               row(column([plot_compare,
+                                           select_metric_x_compare]),
                                    plot_ranks,
                                    checkbox_ranks)])
-        tabs.append(Panel(child=evals_layout, title="Metrics"))
+        tabs.append(Panel(child=evals_layout, title="Evaluations"))
 
     bench_layout = column(select_metric_bench,
                           plot_bench)
