@@ -71,7 +71,6 @@ def main():
 
         # Parse bench element
         # concat by rank and get same index
-        
         tables[rep_type]["bench"] = pd.concat([tables[rep_type]["bench"], load_elements(pjson["bench"])], axis=1, ignore_index=True)
 
         # Load evals if present
@@ -95,15 +94,15 @@ def main():
     tools = "pan,wheel_zoom,box_zoom,box_select,tap,reset,save"
 
     if not tables["profiling"]["config"].empty:
-        main_tabs.append(Panel(child=plot_evals(
+        main_tabs.append(Panel(child=plot_metabench(
             "profiling", tables, default_ranks, tools, rnd_names), title="Profiling"))
 
     if not tables["binning"]["config"].empty:
-        main_tabs.append(Panel(child=plot_evals(
+        main_tabs.append(Panel(child=plot_metabench(
             "binning", tables, default_ranks, tools, rnd_names), title="Binning"))
 
     if not tables["build"]["config"].empty:
-        main_tabs.append(Panel(child=plot_evals(
+        main_tabs.append(Panel(child=plot_metabench(
             "build", tables, default_ranks, tools, rnd_names), title="Build"))
 
     main_layout = Tabs(tabs=main_tabs)
@@ -114,7 +113,7 @@ def main():
     return True
 
 
-def plot_evals(report, tables, default_ranks, tools, rnd_names):
+def plot_metabench(report, tables, default_ranks, tools, rnd_names):
 
     #
     # CDS
@@ -132,6 +131,10 @@ def plot_evals(report, tables, default_ranks, tools, rnd_names):
     print(df_evals)
     cds_evals = ColumnDataSource(df_evals)
 
+    # Check if all jsons are complete (with config, bench and evals)
+    if max(df_config.index) != max(df_bench.config) or \
+       (not df_evals.empty and max(df_config.index) != max(df_evals.config)):
+        raise Exception("Mismatching files")
 
     #
     # Vars
