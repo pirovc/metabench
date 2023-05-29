@@ -13,17 +13,20 @@ rule ganon_build:
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{dtbs}/{dtbs_args}/ganon_db",
-        db = lambda wildcards: config["dbs"][wildcards.dtbs],
+        db_folder = lambda wildcards: ("--input " + config["dbs"][wildcards.dtbs]["folder"]) if "folder" in config["dbs"][wildcards.dtbs] else "",
+        db_extension = lambda wildcards: ("--input-extension " + config["dbs"][wildcards.dtbs]["extension"]) if "extension" in config["dbs"][wildcards.dtbs] else "",
+        db_taxonomy = lambda wildcards: ("--taxonomy " + config["dbs"][wildcards.dtbs]["taxonomy"]) if "taxonomy" in config["dbs"][wildcards.dtbs] else "",
+        db_taxonomy_files = lambda wildcards: ("--taxonomy-files " + config["dbs"][wildcards.dtbs]["taxonomy_files"]) if "taxonomy_files" in config["dbs"][wildcards.dtbs] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers][wildcards.dtbs]["fixed_args"]),
         args = lambda wildcards: str2args(wildcards.dtbs_args)
     shell: 
         """
         {params.path}ganon build-custom \
                            --db-prefix {params.outprefix} \
-                           --input {params.db[folder]} \
-                           --input-extension {params.db[extension]} \
-                           --taxonomy {params.db[taxonomy]} \
-                           --taxonomy-files {params.db[taxonomy_files]} \
+                           {params.db_folder} \
+                           {params.db_extension} \
+                           {params.db_taxonomy} \
+                           {params.db_taxonomy_files} \
                            --threads {threads} \
                            --verbose \
                            {params.fixed_args} \
