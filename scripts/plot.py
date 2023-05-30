@@ -241,7 +241,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names):
     # Ranks
     plot_ranks = figure(title="Ranks", x_range=default_ranks,
                         toolbar_location="above", tools=tools,
-                        width=600, height=600)
+                        width=500, height=500)
     plot_ranks.scatter(x="rank", y="value",
                        source=cds_evals,
                        view=view_ranks,
@@ -254,7 +254,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names):
     plot_ranks.xaxis.major_label_orientation = "vertical"
 
     # Compare
-    plot_compare = figure(title="Compare", toolbar_location="above", tools=tools, width=600, height=600)
+    plot_compare = figure(title="Compare", toolbar_location="above", tools=tools, width=500, height=500)
 
     # Select metric for y-axis based on the stacked cds (assumes data is sorted)
     get_metric_x = CustomJSTransform(args=dict(cds_evals=cds_evals,
@@ -639,7 +639,7 @@ def plot_datatable(cds_config, df_config):
                              columns=[TableColumn(field=field, title=field)
                                       for field in df_config.columns],
                              selectable="checkbox",
-                             width=1200,
+                             width=1000,
                              height=150)
     
 
@@ -798,7 +798,7 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
                          x_range=FactorRange(factors=list(cds_config.data["name"])),
                          toolbar_location="above",
                          tools=tools,
-                         width=1400, height=600)
+                         width=1200, height=600)
 
 
     r = plot.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),

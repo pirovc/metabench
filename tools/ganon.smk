@@ -139,7 +139,7 @@ rule ganon_profiling:
     input:
         rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep"
     output:
-        tre = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.tre")
+        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
     log:
         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.log"
     benchmark:
@@ -148,7 +148,6 @@ rule ganon_profiling:
         srcdir("../envs/ganon_env.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
-        outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}", 
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
         args = lambda wildcards: str2args(wildcards.p_args)
     shell:
@@ -156,36 +155,7 @@ rule ganon_profiling:
         {params.path}ganon report \
                            --db-prefix {params.dbprefix} \
                            --input {input.rep} \
-                           --output-prefix {params.outprefix} {params.args} > {log} 2>&1
-        """
-
-rule ganon_profiling_format:
-    input:
-        tre = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.tre"
-    output:
-        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
-    log:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes.log"
-    conda:
-        srcdir("../envs/evals.yaml")
-    params:
-        scripts_path = srcdir("../scripts/"),
-        ranks = lambda wildcards: " ".join(config["ranks_profiling"]),
-        taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"],
-        header = lambda wildcards: header_bioboxes_profiling("ganon",
-                                                           config["ranks_profiling"],
-                                                           [os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"],
-                                                           wildcards),
-    shell: 
-        """
-        # bioboxes header
-        echo "{params.header}" > {output.bioboxes}
-        python3 {params.scripts_path}profile.py \
-                                    --taxid-col 1 \
-                                    --perc-col 8 \
-                                    --input-file {input.tre} \
-                                    --taxonomy custom \
-                                    --taxonomy-files {params.taxonomy_files} \
-                                    --ranks {params.ranks} >> {output.bioboxes} 2> {log}
-
+                           --output-prefix {output.bioboxes} \
+                           --output-format bioboxes {params.args} > {log} 2>&1
+        mv {output.bioboxes}.tre {output.bioboxes}
         """

@@ -14,15 +14,11 @@ rule kmcp_build:
         srcdir("../envs/kmcp.yaml")
     params:
         path = lambda wildcards: config["tools"]["kmcp"][wildcards.vers],
-        outprefix = "kmcp/{vers}/{dtbs}/{dtbs_args}/",
         db = lambda wildcards: config["dbs"][wildcards.dtbs],
         fixed_args = lambda wildcards: dict2args(config["run"]["kmcp"][wildcards.vers][wildcards.dtbs]["fixed_args"]),
         args = lambda wildcards: str2args(wildcards.dtbs_args)
     shell: 
         """
-        # Tmp folder for compute and aux files
-        kmcp_tmp="{params.outprefix}kmcp_tmp/"
-
         {params.path}kmcp compute \
                           --in-dir {params.db[folder]} \
                           --out-dir {output.tmp_dir} \
@@ -143,7 +139,6 @@ rule kmcp_profiling:
         srcdir("../envs/kmcp.yaml")
     params:
         path = lambda wildcards: config["tools"]["kmcp"][wildcards.vers],
-        outprefix = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}", 
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db/taxonomy"],
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db",
         args = lambda wildcards: str2args(wildcards.p_args)
@@ -154,7 +149,7 @@ rule kmcp_profiling:
                      --cami-report {output.bioboxes} \
                      --taxid-map {input.taxid_map}  \
                      --name-map {input.name_map} \
-                     --taxdump {params.taxonomy_files} > {log} 2>&1
+                     --taxdump {params.taxonomy_files} {params.args} > {log} 2>&1
         # remove .profile suffix
         mv {output.bioboxes}.profile {output.bioboxes}
         """

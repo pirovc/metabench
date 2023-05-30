@@ -1,0 +1,6 @@
+channels:
+ - defaults
+ - bioconda
+ - conda-forge
+dependencies:
+ - metacache=2.3.1

@@ -4,6 +4,7 @@ include: "../tools/bracken.smk"
 include: "../tools/ganon.smk"
 include: "../tools/kmcp.smk"
 include: "../tools/kraken2.smk"
+include: "../tools/metacache.smk"
 
 
 
