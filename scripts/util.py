@@ -2,6 +2,15 @@ import os
 import argparse
 from multitax import CustomTx, DummyTx, NcbiTx, GtdbTx
 
+default_ranks = ["root",
+                 "superkingdom",
+                 "phylum",
+                 "class",
+                 "order",
+                 "family",
+                 "genus",
+                 "species"]
+
 def parse_tax(tax, files):
     tax_args = {"undefined_node": "",
                 "undefined_rank": "",

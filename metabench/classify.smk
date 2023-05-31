@@ -48,7 +48,7 @@ rule all:
 
 rule bench_binning:
     input:
-        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv"
+        bench_binning = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv"
     output:
         json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.json"
     params:
@@ -60,11 +60,12 @@ rule bench_binning:
                                     "binning_arguments": str2args(wildcards.b_args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, report="binning", config = params.config), output.json)
+        json_write(json_benchmark(input.bench_binning, report="binning", config = params.config), output.json)
 
 rule bench_profiling:
     input:
-        bench = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv"
+        bench_binning = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv",
+        bench_profiling = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv"
     output:
         json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.json"
     params:
@@ -77,4 +78,6 @@ rule bench_profiling:
                                     "profiling_arguments": str2args(wildcards.p_args),
                                     "fixed_arguments": dict2args(config["run"][wildcards.tool][wildcards.vers]["fixed_args"])}
     run:
-        json_write(json_benchmark(input.bench, report="profiling", config = params.config), output.json)
+        # Get benchmark values from binning and sum to profiling
+        bench_binning = json_benchmark(input.bench_binning, report="binning", config = params.config)
+        json_write(json_benchmark(input.bench_profiling, report="profiling", config = params.config, sum_bench=bench_binning), output.json)

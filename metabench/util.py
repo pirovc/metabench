@@ -8,8 +8,9 @@ default_value = "default"
 def join_args(args):
     # Skip '' empty args created when using boolean parameters
     # If all are off, return default value
-    j = "_".join([a for a in args if a!=""])
+    j = "_".join([a for a in args if a != ""])
     return j if j else default_value
+
 
 def dict2args(args_dict):
     s = ""
@@ -29,10 +30,10 @@ def str2args(s):
 def argval2str(arg, val):
     if isinstance(val, bool):
         # Boolean argument are either single or none (--active or "")
-        return str(arg) if val==True else ""
+        return str(arg) if val == True else ""
     else:
         # If normal argument was deactivated --value ''
-        if str(val)=="":
+        if str(val) == "":
             return ""
         else:
             return str(arg) + "=" + str(val)
@@ -47,10 +48,11 @@ def args_product(config_args_dict):
             # "--param": [0, 0.2, 0.5]
             # "--bool-param": [True, False]
             if isinstance(v, list):
-                expanded_args.append(tuple([argval2str(p, element) for element in v]))
+                expanded_args.append(
+                    tuple([argval2str(p, element) for element in v]))
             elif isinstance(v, str):
                 # Range values "--range-param": "0,1,0.1"
-                if len(v.split(","))==3:
+                if len(v.split(",")) == 3:
                     split_v = v.split(",")
                     rargs = []
                     # include stop
@@ -86,13 +88,24 @@ def json_default(report: str = "", config: dict = {}):
     j["report"] = report
     j["created"] = datetime.datetime.now().isoformat()
     j["config"] = config
-    j["bench"] = {}    
+    j["bench"] = {}
     return j
 
 
-def json_benchmark(bench_file, report: str = "", config: dict = {}):
+def json_benchmark(bench_file, report: str = "", config: dict = {}, sum_bench: dict = {}):
     out_json = json_default(report=report, config=config)
     out_json["config"] = config
+
+    bench_fields = {0: "cpu_time_seconds",
+                    # 1: "wall_clock_time",
+                    2: "mem_rss_mb",
+                    # 3: "mem_vms_mb",
+                    # 4: "mem_uss_mb",
+                    # 5: "mem_pss_mb",
+                    6: "io_in_bytes",
+                    7: "io_out_bytes",
+                    8: "mean_cpu_load",
+                    9: "cpu_load"}
 
     # Parse benchmark file and select fastest if more then one run
     with open(bench_file, "r") as file:
@@ -101,34 +114,35 @@ def json_benchmark(bench_file, report: str = "", config: dict = {}):
         for line in file:
             fields = line.rstrip().split("\t")
             bench_values.append(fields)
-    selected_fields = bench_select(bench_values)
 
+    # Select lowest execution time cpu_time_seconds
+    selected_fields = bench_select_lowest(bench_values, 0)
+
+    # Add repeats
     out_json["bench"]["repeats"] = len(bench_values)
-    out_json["bench"]["cpu_time_seconds"] = float(
-        selected_fields[0])
-    #out_json["bench"]["wall_clock_time"] = selected_fields[1]
-    out_json["bench"]["mem_rss_mb"] = float(selected_fields[2])
-    out_json["bench"]["mem_vms_mb"] = float(selected_fields[3])
-    out_json["bench"]["mem_uss_mb"] = float(selected_fields[4])
-    out_json["bench"]["mem_pss_mb"] = float(selected_fields[5])
-    out_json["bench"]["io_in_bytes"] = float(selected_fields[6])
-    out_json["bench"]["io_out_bytes"] = float(
-        selected_fields[7])
-    out_json["bench"]["mean_cpu_load"] = float(
-        selected_fields[8])
-    out_json["bench"]["cpu_load"] = float(selected_fields[9])
-    
+    for field, metric in bench_fields.items():
+        out_json["bench"][metric] = float(selected_fields[field])
+
+    # If there's another benchmark to sum/max
+    if sum_bench:
+        for field, metric in bench_fields.items():
+            if field == 0:  # sum cpu_time_seconds
+                out_json["bench"][metric] += float(sum_bench["bench"][metric])
+            else:  # max (any other field)
+                out_json["bench"][metric] = max(
+                    [out_json["bench"][metric], sum_bench["bench"][metric]])
+
     return out_json
 
 
-def bench_select(bench_values):
+def bench_select_lowest(bench_values, field):
     # No repetition
     if len(bench_values) == 1:
-        return bench_values[0]
+        return bench_values[field]
     else:
         # return min time
-        cpu_time_seconds = [float(fields[0]) for fields in bench_values]
-        min_idx = cpu_time_seconds.index(min(cpu_time_seconds))
+        val = [float(fields[field]) for fields in bench_values]
+        min_idx = val.index(min(val))
         return bench_values[min_idx]
 
 
