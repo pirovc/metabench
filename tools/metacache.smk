@@ -94,32 +94,17 @@ rule metacache_classify_format:
         header = lambda wildcards: header_bioboxes_binning("metacache", wildcards)
     shell:
         """
-
-        # Get DB info to link taxids and sequence ids
-        # cols: name    sequence    form    variety subspecies  species subgenus    genus   subtribe    tribe   subfamily   family  suborder    ordersubclass   class   subphylum   phylum  subkingdom  kingdom domain
-        {params.path}metacache info {params.dbprefix} lin 2> /dev/null | tail -n+2 | cut -f 2,6 > {output.taxid_map}
-
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
 
-        # Print taxid classification (not sequence) - check if /1 on readid and remove it
+        # Get DB info to link taxids and sequence ids (cols 2 and 6)
+        # cols: name    sequence    form    variety subspecies  species subgenus    genus   subtribe    tribe   subfamily   family  suborder    ordersubclass   class   subphylum   phylum  subkingdom  kingdom domain
+        {params.path}metacache info {params.dbprefix} lin 2> /dev/null | tail -n+2 | cut -f 2,6 > {output.taxid_map}
+
+        # Print taxonomic classification (not at sequence level) - check if /1 on readid and remove it
         tail -n+3 {input.query_out} | awk 'BEGIN{{FS=OFS="\t"}}{{if($2!="sequence"){{if(substr($1,length($1)-1)=="/1"){{$1=substr($1,0,length($1)-2);}}; print $1,$4}}}}' >> {output.bioboxes}
 
         # Print sequence classification (get taxid from map) - check if /1 on readid and remove it
-        # out: readid <tab> taxid <tab> <tab> sequence id (2.99 placeholder to insert an empty field)
+        # out: readid <tab> taxid <tab> "" <tab> sequence id ----> 2.99 placeholder to insert an empty field
         join -1 4 -2 1 <(tail -n+3 {input.query_out} | awk 'BEGIN{{FS=OFS="\t"}}{{if($2=="sequence"){{print}}}}' | sort -k 4,4 -t$'\t') <(sort -k 1,1 -t$'\t' {output.taxid_map} ) -o "1.1,2.2,2.99,1.3" -t$'\t' >> {output.bioboxes}
-        """
-
-
-rule metacache_profiling:
-    input:
-        bioboxes = "metacache/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
-    output:
-        bioboxes = touch("metacache/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes")
-    benchmark:
-        repeat("metacache/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
-    log:
-        "metacache/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.log"
-    shell:
-        """
         """

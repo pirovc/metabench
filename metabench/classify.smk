@@ -24,9 +24,12 @@ def input_all():
                                 for binning_args in args_product(config["run"][tool][vers]["binning_args"]):
                                     ba = join_args(sorted(binning_args))
                                     out.append(path + ba + ".binning")
-                                    for profiling_args in args_product(config["run"][tool][vers]["profiling_args"]):
-                                        pa = join_args(sorted(profiling_args))
-                                        out.append(path + ba + "/" + pa + ".profiling")
+                                    
+                                    # If tools perform profiling
+                                    if "profiling_args" in config["run"][tool][vers]:
+                                        for profiling_args in args_product(config["run"][tool][vers]["profiling_args"]):
+                                            pa = join_args(sorted(profiling_args))
+                                            out.append(path + ba + "/" + pa + ".profiling")
     #import pprint
     #pprint.pprint(out)
     return out
