@@ -46,15 +46,5 @@ run:
         "database99": "/my/work/dir/databases/toolB/2.1.2/database99/"
       fixed_args:
       binning_args:
-      profiling_args:
+      # profiling_args: # tool without profilling feature
 
-
-ranks_profiling:
-  - superkingdom
-  - phylum
-  - class
-  - order
-  - family
-  - genus
-  - species
-# - assembly

@@ -61,11 +61,11 @@ rule bracken_profiling_format:
         srcdir("../envs/evals.yaml")
     params:
         scripts_path = srcdir("../scripts/"),
-        ranks = lambda wildcards: " ".join(config["ranks_profiling"]),
+        ranks = lambda wildcards: " ".join(config["default_ranks"]),
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
         header = lambda wildcards: header_bioboxes_profiling("kraken2",
-                                                           config["ranks_profiling"],
+                                                           config["default_ranks"],
                                                            [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
                                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
                                                            wildcards),
@@ -79,6 +79,6 @@ rule bracken_profiling_format:
                                     --input-file {input.bra} \
                                     --taxonomy ncbi \
                                     --taxonomy-files {params.taxonomy_files} \
-                                    --ranks {params.ranks} >> {output.bioboxes} 2> {log}
+                                    --ranks >> {output.bioboxes} 2> {log}
 
         """
