@@ -44,7 +44,7 @@ rule metacache_build_size:
         "du --bytes --dereference {input} > {output}"  # output in bytes
 
 
-rule metacache_classify:
+rule metacache_binning:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
@@ -80,7 +80,7 @@ rule metacache_classify:
         fi
         """
 
-rule metacache_classify_format:
+rule metacache_binning_format:
     input: 
         query_out = "metacache/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.out"
     output:

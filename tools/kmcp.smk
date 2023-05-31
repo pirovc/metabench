@@ -52,7 +52,7 @@ rule kmcp_build_size:
         "du --bytes --dereference {input} > {output}"  # output in bytes
 
 
-rule kmcp_classify:
+rule kmcp_binning:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
@@ -93,7 +93,7 @@ rule kmcp_classify:
 
         """
 
-rule kmcp_classify_format:
+rule kmcp_binning_format:
     input: 
         search_out = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tsv.gz",
         taxid_map = lambda wildcards: os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db/taxid.map"

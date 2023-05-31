@@ -47,7 +47,7 @@ rule ganon_build_size:
         "du --bytes --dereference {input} > {output}"  # output in bytes
 
 
-rule ganon_classify:
+rule ganon_binning:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
@@ -97,7 +97,7 @@ rule ganon_classify:
         fi 
         """
 
-rule ganon_classify_format:
+rule ganon_binning_format:
     input: 
         lca="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.lca",
         dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"

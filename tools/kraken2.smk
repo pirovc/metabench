@@ -44,7 +44,7 @@ rule kraken2_build_size:
     shell:
         "du --bytes --dereference {input} > {output}"  # output in bytes
 
-rule kraken2_classify:
+rule kraken2_binning:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
@@ -88,7 +88,7 @@ rule kraken2_classify:
         fi
         """
 
-rule kraken2_classify_format:
+rule kraken2_binning_format:
     input:
         res = "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.res",
     output:
