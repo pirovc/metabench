@@ -48,3 +48,14 @@ run:
       binning_args:
       # profiling_args: # tool without profilling feature
 
+# Optional, define alternative ranks for profiling
+#default_ranks:
+#  - superkingdom
+#  - phylum
+#  - class
+#  - order
+#  - family
+#  - genus
+#  - species
+#  - assembly
+#  - sequence

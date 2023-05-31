@@ -148,6 +148,7 @@ rule ganon_profiling:
         srcdir("../envs/ganon_env.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
+        ranks = lambda wildcards: " ".join(config["default_ranks"]),
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
         args = lambda wildcards: str2args(wildcards.p_args)
     shell:
@@ -156,6 +157,7 @@ rule ganon_profiling:
                            --db-prefix {params.dbprefix} \
                            --input {input.rep} \
                            --output-prefix {output.bioboxes} \
+                           --ranks {params.ranks} \
                            --output-format bioboxes {params.args} > {log} 2>&1
         mv {output.bioboxes}.tre {output.bioboxes}
         """

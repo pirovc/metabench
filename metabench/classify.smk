@@ -7,14 +7,13 @@ include: "../tools/kraken2.smk"
 include: "../tools/metacache.smk"
 
 if "default_ranks" not in config:
-    config["default_ranks"] = ["root",
-                     "superkingdom",
-                     "phylum",
-                     "class",
-                     "order",
-                     "family",
-                     "genus",
-                     "species"]
+    config["default_ranks"] = ["superkingdom",
+                               "phylum",
+                               "class",
+                               "order",
+                               "family",
+                               "genus",
+                               "species"]
 
 def input_all():
     out = []
