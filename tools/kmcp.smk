@@ -29,9 +29,7 @@ rule kmcp_build:
         {params.path}kmcp index \
                           --in-dir {output.tmp_dir} \
                           --out-dir {output.index_dir} \
-                          --threads {threads} \
-                           {params.fixed_args} \
-                           {params.args} >> {log} 2>&1
+                          --threads {threads} >> {log} 2>&1
         
         # Make mapping files for KMCP targets "GCF_019263745.1_ASM1926374v1_genomic"
         find {params.db[folder]} -name "*.fna.gz" | xargs -I {{}} basename {{}} | awk '{{split($1,a,"_"); print a[1]"_"a[2]"\t"substr($1,1,length($1)-7)}}' > "{output.tmp_dir}/accver_filename.txt" 2>> {log}
