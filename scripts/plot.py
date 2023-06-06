@@ -170,15 +170,15 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names):
 
     # Group
     multiselect_groups = MultiSelect(title="Group by",
-        value=["name"], options=df_config.columns.to_list(), size=8)
+        value=["name"], options=df_config.columns.to_list(), size=9)
 
     # Marker
     multiselect_markers = MultiSelect(title="Marker",
-        value=["name"], options=df_config.columns.to_list(), size=8, width=150)
+        value=["name"], options=df_config.columns.to_list(), size=9, width=150)
 
     # Color
     multiselect_colors = MultiSelect(title="Color",
-        value=["name"], options=df_config.columns.to_list(), size=8, width=150)
+        value=["name"], options=df_config.columns.to_list(), size=9, width=150)
 
     # Sort
     select_sort = Select(title="Sort (x):", value="name", options=df_config.columns.to_list())
@@ -331,7 +331,6 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names):
             }
         }
         filter_config_bench.indices = indices;
-        console.log(filter_config_bench.indices);
         cds_bench.change.emit();
         """)
     cds_config.selected.js_on_change('indices', cb_cds_config)
@@ -922,11 +921,21 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
                   cds_target=cds_target,
                   cds_config=cds_config,
                   cds_boxplot_target=cds_boxplot_target,
-                  toggle_boxplot=toggle_boxplot),
+                  toggle_boxplot=toggle_boxplot,
+                  plot_target=plot_target),
         code='''
         cds_boxplot_target.data = {"index": [], "lower": [], "q1": [], "q2": [], "q3": [], "upper": []};
 
-        if(toggle_boxplot.active.includes(0)){
+        if(!toggle_boxplot.active.includes(0)){
+            // return alpha dots
+            plot_target.renderers[0].glyph.fill_alpha = 1;
+            plot_target.renderers[0].glyph.line_alpha = 1;
+            plot_target.renderers[0].glyph.hatch_alpha = 1;
+        }else{
+            
+            plot_target.renderers[0].glyph.fill_alpha = 0.1;
+            plot_target.renderers[0].glyph.line_alpha = 0.1;
+            plot_target.renderers[0].glyph.hatch_alpha = 0.1;
 
             // for each entry on cds_eval/cds_bench, get config + values on multiselect to rebuild
             var groups_values = {};
