@@ -47,7 +47,7 @@ rule kmcp_build_size:
     output:
         "kmcp/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference {input} > {output}"  # output in bytes
+        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
 
 
 rule kmcp_binning:
@@ -132,7 +132,7 @@ rule kmcp_profiling:
     log:
         "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.log"
     threads:
-        config["threads"]
+        config["threads"] if config["threads"] <= 4 else 4
     conda:
         srcdir("../envs/kmcp.yaml")
     params:

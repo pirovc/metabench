@@ -815,6 +815,7 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
 
     plot.xaxis.major_label_orientation = "vertical"
     plot.yaxis.axis_label = init_metric
+    plot.yaxis.formatter.use_scientific = False
 
     # LEGEND
     legend_items = []

@@ -44,7 +44,7 @@ rule ganon_build_size:
     output:
         "ganon/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference {input} > {output}"  # output in bytes
+        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
 
 
 rule ganon_binning:
