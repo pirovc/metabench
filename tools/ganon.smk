@@ -66,10 +66,10 @@ rule ganon_binning:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}", 
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
-        input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if config["samples"][wildcards.samp]["fq2"] else "",
+        input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if "fq2" in config["samples"][wildcards.samp] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
         args = lambda wildcards: str2args(wildcards.b_args),
-        reassign = lambda wildcards: 1 if "--reassign" in wildcards.b_args else 0 
+        reassign = lambda wildcards: 1 if "--reassign" in wildcards.b_args or "--binning" in wildcards.b_args else 0 
     shell:
         """
         if [[ -z "{params.input_fq2}" ]]; then # single-end

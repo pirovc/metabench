@@ -32,6 +32,8 @@ def main():
                         type=str, nargs="*", required=True, help="json file(s) and/or folder(s) with json reports (recursive search)")
     parser.add_argument("-o", "--output",    metavar="",
                         type=str, help="output html file")
+    parser.add_argument("-f", "--font-size",    metavar="",
+                        type=int, default=10, help="font size")
     parser.add_argument("-v", "--version", action="version",
                         version="%(prog)s 1.0.0")
 
@@ -95,15 +97,15 @@ def main():
 
     if not tables["profiling"]["config"].empty:
         main_tabs.append(Panel(child=plot_metabench(
-            "profiling", tables, default_ranks, tools, rnd_names), title="Profiling"))
+            "profiling", tables, default_ranks, tools, rnd_names, args), title="Profiling"))
 
     if not tables["binning"]["config"].empty:
         main_tabs.append(Panel(child=plot_metabench(
-            "binning", tables, default_ranks, tools, rnd_names), title="Binning"))
+            "binning", tables, default_ranks, tools, rnd_names,  args), title="Binning"))
 
     if not tables["build"]["config"].empty:
         main_tabs.append(Panel(child=plot_metabench(
-            "build", tables, default_ranks, tools, rnd_names), title="Build"))
+            "build", tables, default_ranks, tools, rnd_names,  args), title="Build"))
 
     main_layout = Tabs(tabs=main_tabs)
 
@@ -113,7 +115,7 @@ def main():
     return True
 
 
-def plot_metabench(report, tables, default_ranks, tools, rnd_names):
+def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
 
     #
     # CDS
@@ -298,11 +300,11 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names):
 
 
     # Evals
-    plot_evals, legend_plot_evals, cds_boxplot_evals = main_plot(tools, cds_config, cds_evals, view_evals, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric)
+    plot_evals, legend_plot_evals, cds_boxplot_evals = main_plot(tools, cds_config, cds_evals, view_evals, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric, args.font_size)
 
 
     # Bench
-    plot_bench, legend_plot_bench, cds_boxplot_bench = main_plot(tools, cds_config, cds_bench, view_bench, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric)
+    plot_bench, legend_plot_bench, cds_boxplot_bench = main_plot(tools, cds_config, cds_bench, view_bench, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric, args.font_size)
 
     #
     # Callbacks
@@ -449,7 +451,8 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names):
                   filter_metric_evals=filter_metric_evals,
                   yaxis_ranks=plot_ranks.yaxis[0],
                   yaxis_compare=plot_compare.yaxis[0],
-                  yaxis_evals=plot_evals.yaxis[0]),
+                  yaxis_evals=plot_evals.yaxis[0],
+                  select_rank=select_rank),
 
         code="""
         filter_metric_ranks.group = this.value;
@@ -459,7 +462,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names):
         yaxis_compare.axis_label = this.value;
 
         filter_metric_evals.group = this.value;
-        yaxis_evals.axis_label = this.value;
+        yaxis_evals.axis_label = this.value + " (" + select_rank.value + ")";
 
         cds_evals.change.emit();
 
@@ -782,7 +785,7 @@ def CustomJSTransform_get_markercolor(slist, cds_config, multiselect):
     return get_marker
 
 
-def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric):
+def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric, font_size):
 
     # BOXPLOT
     #        _________
@@ -793,18 +796,19 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
     #
     cds_boxplot = ColumnDataSource(dict(index=[], lower=[], q1=[], q2=[], q3=[], upper=[]))
 
-    plot = figure(title="Groups",
-                         x_range=FactorRange(factors=list(cds_config.data["name"])),
-                         toolbar_location="above",
-                         tools=tools,
-                         width=1200, height=600)
+    plot = figure(title="",
+                  x_range=FactorRange(factors=list(cds_config.data["name"])),
+                  toolbar_location="above",
+                  tools=tools,
+                  width=1200, height=600)
+                  #width=800, height=500)
 
 
     r = plot.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
                         y="value",
                         source=cds_target,
                         view=view_target,
-                        size=12,
+                        size=font_size,
                         marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
                         fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                         line_color="black")
@@ -815,7 +819,7 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
 
     plot.xaxis.major_label_orientation = "vertical"
     plot.yaxis.axis_label = init_metric
-    plot.yaxis.formatter.use_scientific = False
+
 
     # LEGEND
     legend_items = []
@@ -823,6 +827,20 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
         legend_items.append(LegendItem(label=str(i), renderers=[r], index=i, visible=False))
     legend_plot = Legend(items=legend_items)
     plot.add_layout(legend_plot, 'right')
+
+    # Font sizes
+    #plot.yaxis.formatter.use_scientific = False
+    plot.xaxis.axis_label_text_font_size = str(font_size) + "pt"
+    plot.yaxis.axis_label_text_font_size = str(font_size) + "pt"
+    plot.yaxis.major_label_text_font_size = str(font_size) + "pt"
+    plot.xaxis.major_label_text_font_size = str(font_size) + "pt"
+    plot.legend.label_text_font_size = str(font_size) + "pt"
+    plot.legend.glyph_height = font_size*2
+    plot.legend.glyph_width = font_size*2
+
+    #plot.legend.background_fill_color = "#bfbfbf"
+    #plot.background_fill_color = "#bfbfbf"
+    #plot.border_fill_color = "#bfbfbf"
 
     # Boxplot (vbar + whisker)
     plot.vbar("index", 0.7, "q2", "q3", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
@@ -934,9 +952,9 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
             plot_target.renderers[0].glyph.hatch_alpha = 1;
         }else{
             
-            plot_target.renderers[0].glyph.fill_alpha = 0.1;
-            plot_target.renderers[0].glyph.line_alpha = 0.1;
-            plot_target.renderers[0].glyph.hatch_alpha = 0.1;
+            plot_target.renderers[0].glyph.fill_alpha = 0.3;
+            plot_target.renderers[0].glyph.line_alpha = 0.3;
+            plot_target.renderers[0].glyph.hatch_alpha = 0.3;
 
             // for each entry on cds_eval/cds_bench, get config + values on multiselect to rebuild
             var groups_values = {};

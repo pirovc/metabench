@@ -132,6 +132,10 @@ rule kmcp_profiling:
     log:
         "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.log"
     threads:
+        # as stated in the log of kmcp profile:
+        # 10:10:55.163 [INFO] using a lot of threads does not always accelerate processing, 4-threads is fast enough
+        # 10:10:55.163 [INFO] kmcp v0.9.2
+        # 10:10:55.163 [INFO]   https://github.com/shenwei356/kmcp
         config["threads"] if config["threads"] <= 4 else 4
     conda:
         srcdir("../envs/kmcp.yaml")
