@@ -44,7 +44,24 @@ def input_all():
 
 rule all:
     input:
-        expand("{i}.{ext}", i=input_all(), ext=["bioboxes", "bench.json"])
+        expand("{i}.{ext}", i=input_all(), ext=["bioboxes.gz", "bench.json"])
+
+rule compress_binning:
+    input:
+        binning_bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
+    output:
+        binning_bioboxes_gz = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes.gz"
+    shell:
+        """gzip {input.binning_bioboxes}"""
+
+rule compress_profiling:
+    input:
+        profiling_bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
+    output:
+        profiling_bioboxes_gz = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes.gz"
+    shell:
+        """gzip {input.profiling_bioboxes}"""
+
 
 rule bench_binning:
     input:

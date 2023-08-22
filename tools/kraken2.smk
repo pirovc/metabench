@@ -19,6 +19,7 @@ rule kraken2_build:
         path = lambda wildcards: config["tools"]["kraken2"][wildcards.vers],
         outprefix = "kraken2/{vers}/{dtbs}/{dtbs_args}/",
         db = lambda wildcards: config["dbs"][wildcards.dtbs],
+        db_taxonomy_files = lambda wildcards: config["dbs"][wildcards.dtbs]["taxonomy_files"] if "taxonomy_files" in config["dbs"][wildcards.dtbs] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["kraken2"][wildcards.vers][wildcards.dtbs]["fixed_args"]),
         args = lambda wildcards: str2args(wildcards.dtbs_args)
     shell: 
@@ -27,6 +28,14 @@ rule kraken2_build:
             zcat "${{f}}" > {output.tmp_fa};
             {params.path}kraken2-build --db {params.outprefix} --no-masking --add-to-library {output.tmp_fa} >> {log} 2>&1;
         done
+        
+        # Use provided tax
+        if [[ ! -z "{params.db_taxonomy_files}" ]]; then
+            mkdir -p {params.outprefix}taxonomy
+            tar xf {params.db_taxonomy_files} -C {params.outprefix}taxonomy/
+        fi
+
+        # Download taxonomy + accession2taxid
         {params.path}kraken2-build --db {params.outprefix} --download-taxonomy >> {log} 2>&1
         {params.path}kraken2-build --build --db {params.outprefix} --threads {threads} {params.args} {params.fixed_args} >> {log} 2>&1
         #rm -rfv {params.outprefix}taxonomy/prelim_map.txt >> {log} 2>&1

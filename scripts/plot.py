@@ -997,12 +997,20 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
                 var lower = q1 - (1.5 * (q3-q1)); // considering outliers IQR*1.5
                 if(lower < quantile(sorted_arr, 0)){
                     lower = quantile(sorted_arr, 0);
+                }else{
+                    // get closest value without outliers
+                    lower = Math.min(...sorted_arr.filter(num => num >= lower));
                 }
 
                 var upper = q3 + (1.5 * (q3-q1)); // considering outliers IQR*1.5
                 if(upper > quantile(sorted_arr, 1)){
-                    upper = quantile(sorted_arr, 1)
+                    upper = quantile(sorted_arr, 1);
+                }else{
+                    // get closest value without outliers
+                    upper = Math.max(...sorted_arr.filter(num => num <= upper));
                 }
+
+                console.log(sorted_arr);
 
                 cds_boxplot_target.data["lower"].push(lower);
                 cds_boxplot_target.data["q1"].push(q1);

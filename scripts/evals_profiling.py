@@ -29,7 +29,7 @@ def main():
     parser.add_argument("-s", "--thresholds", nargs="*", type=float, default=[0],
                         help="Thresholds to generate evaluations [0-100]")
     parser.add_argument("-j", "--output-json", type=str,
-                        help="Output file for evaluation in json (cumulative mode)")
+                        help="Output file for evaluation in json")
     args = parser.parse_args()
 
     tax = parse_tax(args.taxonomy, args.taxonomy_files)
