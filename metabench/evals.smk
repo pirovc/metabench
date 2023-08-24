@@ -7,17 +7,18 @@ include: "util.py"
 
 def input_all():
     out = []
-    for binning_file in glob.glob('**/*.binning.bioboxes', recursive=True):
-        # without ".bioboxes"
-        binning_file_prefix = os.path.splitext(binning_file)[0]
+    suffix_len = len(".bioboxes.gz")
+    for binning_file in glob.glob('**/*.binning.bioboxes.gz', recursive=True):
+        # without ".bioboxes.gz"
+        binning_file_prefix = binning_file[:-suffix_len]
         # Just generate for prefixes with sample in config file
         sample = binning_file_prefix.split("/")[2]
         if sample in config["samples"].keys():
             out.append(binning_file_prefix)
 
-    for profiling_file in glob.glob('**/*.profiling.bioboxes', recursive=True):
-        # without ".bioboxes"
-        profiling_file_prefix = os.path.splitext(profiling_file)[0]
+    for profiling_file in glob.glob('**/*.profiling.bioboxes.gz', recursive=True):
+        # without ".bioboxes.gz"
+        profiling_file_prefix = profiling_file[:-suffix_len]
         # Just generate for prefixes with sample in config file
         sample = profiling_file_prefix.split("/")[2]
         if sample in config["samples"].keys():
@@ -32,7 +33,7 @@ rule all:
 
 rule evals_binning_script:
     input:
-        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
+        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes.gz"
     output:
         cumu_json = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.cumu.json"),
         rank_json = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.rank.json"),
@@ -82,7 +83,7 @@ rule evals_binning:
 
 rule evals_profiling_script:
     input:
-        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
+        bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes.gz"
     output:
         json_tmp = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.evals.tmp.json")
     log:
