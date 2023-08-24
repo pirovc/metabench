@@ -730,9 +730,9 @@ def define_markers(n_elements):
 def make_hover(cds_config, exclude_list: list = []):
     hover_tool = HoverTool(
         tooltips=[(f, "@config{" + f + "}") for f in cds_config.data.keys() if f not in exclude_list] +
-                 [("value", "@value")],
+                 [("value", "@value{0.000}")],
         formatters={"@config": CustomJSHover(args=dict(
-            cds_config=cds_config), code="return cds_config.data[format][value]")}
+            cds_config=cds_config), code="return cds_config.data[format][value];")}
     )
     return hover_tool
 
@@ -843,11 +843,25 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
     #plot.border_fill_color = "#bfbfbf"
 
     # Boxplot (vbar + whisker)
-    plot.vbar("index", 0.7, "q2", "q3", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
-    plot.vbar("index", 0.7, "q1", "q2", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
+    top_box = plot.vbar("index", 0.7, "q2", "q3", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
+    bottom_box = plot.vbar("index", 0.7, "q1", "q2", source=cds_boxplot, line_color="black", line_width=2, fill_color=None, line_alpha=0.5)
     w = Whisker(base="index", upper="upper", lower="lower", source=cds_boxplot, line_color="black", line_width=2, line_alpha=0.5)
     w.upper_head.size = w.lower_head.size = 20
     plot.add_layout(w)
+
+    # add hover just to the two box renderers
+    box_hover = HoverTool(renderers=[top_box, bottom_box],
+                             tooltips=[
+                                 ('upper', '@upper{0.000}'),
+                                 ('q3', '@q3{0.000}'),
+                                 ('median', '@q2{0.000}'),
+                                 ('q1', '@q1{0.000}'),
+                                 ('lower', '@lower{0.000}'),
+                                 ('iqr', '@index{custom}')
+                             ],
+                             formatters={"@index": CustomJSHover(args=dict(cds_boxplot=cds_boxplot), code="const idx = cds_boxplot.data['index'].indexOf(value); return (cds_boxplot.data['q3'][idx]-cds_boxplot.data['q1'][idx]).toFixed(3);")})
+    plot.add_tools(box_hover)
+
 
     return plot, legend_plot, cds_boxplot
 
@@ -1009,8 +1023,6 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
                     // get closest value without outliers
                     upper = Math.max(...sorted_arr.filter(num => num <= upper));
                 }
-
-                console.log(sorted_arr);
 
                 cds_boxplot_target.data["lower"].push(lower);
                 cds_boxplot_target.data["q1"].push(q1);
