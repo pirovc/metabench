@@ -1,6 +1,8 @@
 rule bracken_build:
     output:
-        "bracken/{vers}/{dtbs}/{dtbs_args}/database.kraken"
+        db_kraken = temp("bracken/{vers}/{dtbs}/{dtbs_args}/database.kraken"),
+        db_kraken_mers = temp("bracken/{vers}/{dtbs}/{dtbs_args}/database100mers.kraken"),
+        kmer_dist = "bracken/{vers}/{dtbs}/{dtbs_args}/database100mers.kmer_distrib"
     benchmark:
         repeat("bracken/{vers}/{dtbs}/{dtbs_args}.build.bench.tsv", config["repeat"])
     log:
@@ -17,14 +19,14 @@ rule bracken_build:
         args = lambda wildcards: str2args(wildcards.dtbs_args)
     shell: 
         """
-        rm -rf "{params.outprefix}{wildcards.dtbs_args}" # remove auto-generated folder
-        ln -s "{params.kraken2db}" "{params.outprefix}" # link kraken2 build
+        rm -rf "{params.outprefix}{wildcards.dtbs_args}" #  remove auto-generated folder
+        ln -s "{params.kraken2db}" "{params.outprefix}" #  link kraken2 build
         {params.path}bracken-build -t {threads} {params.args} {params.fixed_args} > {log} 2>&1
         """
 
 rule bracken_build_size:
     input:
-        "bracken/{vers}/{dtbs}/{dtbs_args}/database.kraken"
+        kmer_dist = "bracken/{vers}/{dtbs}/{dtbs_args}/database100mers.kmer_distrib"
     output:
         "bracken/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:

@@ -6,8 +6,6 @@ include: "../tools/kmcp.smk"
 include: "../tools/kraken2.smk"
 include: "../tools/metacache.smk"
 
-
-
 def input_build():
     out = []
     for tool in config["tools"]:

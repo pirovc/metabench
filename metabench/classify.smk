@@ -6,6 +6,10 @@ include: "../tools/kmcp.smk"
 include: "../tools/kraken2.smk"
 include: "../tools/metacache.smk"
 
+# Workaround for KMCP, since the rule kmcp_profiling generates the binning results
+# kmcp search is the "binning" for metrics
+ruleorder: kmcp_binning > kmcp_profiling > kmcp_binning_format > compress_binning
+
 if "default_ranks" not in config:
     config["default_ranks"] = ["superkingdom",
                                "phylum",

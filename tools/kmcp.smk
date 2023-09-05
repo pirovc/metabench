@@ -54,7 +54,8 @@ rule kmcp_binning:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
-        search_out = temp("kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tsv.gz")
+        search_out = temp("kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tsv.gz"),
+        dummy_bioboxes = touch("kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes")
     benchmark:
         repeat("kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])
     log:
@@ -91,42 +92,14 @@ rule kmcp_binning:
 
         """
 
-rule kmcp_binning_format:
-    input: 
-        search_out = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tsv.gz",
-        taxid_map = lambda wildcards: os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db/taxid.map"
-    output:
-        bioboxes = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
-    params:
-        header = lambda wildcards: header_bioboxes_binning("kmcp", wildcards)
-    shell:
-        """
-        # bioboxes header
-        echo "{params.header}" > {output.bioboxes}
-
-        # Get taxid from target from taxid.map file
-        # search_out fields: #query qLen    qKmers  FPR hits    target  chunkIdx    chunks  tLen    kSize   mKmers  qCov    tCov    jacc    queryIdx
-        # Check if end of read id is "/1" and remove it
-
-        join -1 2 -2 1 -t$'\t' -o "1.1,2.2,1.2" \
-             <(zcat {input.search_out} | tail -n+2 | cut -f 1,6 | sort -k 2,2) \
-             <(sort -k 1,1 {input.taxid_map})  | \
-             awk '{{split($3,a,"_");
-                    accver=a[1]"_"a[2];
-                    if(substr($1,length($1)-1)=="/1"){{
-                        $1=substr($1,0,length($1)-2);
-                    }};
-                    print $1"\t"$2"\t"accver}}' >> {output.bioboxes}
-        """
-
-
 rule kmcp_profiling:
     input:
         search_out="kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tsv.gz",
         taxid_map = lambda wildcards: os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db/taxid.map",
         name_map = lambda wildcards: os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db/name.map"
     output:
-        bioboxes = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
+        p_bioboxes = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes",
+        b_bioboxes = temp("kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.binning.gz")
     benchmark:
         repeat("kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
     log:
@@ -141,6 +114,7 @@ rule kmcp_profiling:
         srcdir("../envs/kmcp.yaml")
     params:
         path = lambda wildcards: config["tools"]["kmcp"][wildcards.vers],
+        binning_outprefix = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}",
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db/taxonomy"],
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db",
         args = lambda wildcards: str2args(wildcards.p_args)
@@ -148,10 +122,41 @@ rule kmcp_profiling:
         """
         kmcp profile {input.search_out} \
                      --threads {threads} \
-                     --cami-report {output.bioboxes} \
+                     --cami-report {output.p_bioboxes} \
+                     --binning-result {output.b_bioboxes} \
                      --taxid-map {input.taxid_map}  \
                      --name-map {input.name_map} \
                      --taxdump {params.taxonomy_files} {params.args} > {log} 2>&1
         # remove .profile suffix
-        mv {output.bioboxes}.profile {output.bioboxes}
+        mv {output.p_bioboxes}.profile {output.p_bioboxes}
+
+        # mv binning
+        zcat {output.b_bioboxes} > {params.binning_outprefix}.binning.bioboxes
+        """
+
+rule kmcp_binning_format:
+    input:
+        bioboxes = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
+    output:
+        bioboxes_gz = "kmcp/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes.gz"
+    params:
+        header = lambda wildcards: header_bioboxes_binning("kmcp", wildcards)
+    shell:
+        """
+        # bioboxes header
+        echo "{params.header}" | gzip > {output.bioboxes_gz}
+
+        # Check with .tax entries at "assembly" or "sequence" level and report parent taxa
+        # also report entries not matching .tax (-a 1)
+        # Check if end of read id is "/1" and remove it
+        grep -e "^@" -e "^#" -v {input.bioboxes} | \
+        awk 'BEGIN{{FS=OFS="\t"}}
+            {{
+            if(substr($1,length($1)-1)=="/1"){{
+                $1=substr($1,0,length($1)-2);
+            }};
+
+            print $1,$2,"","";
+            }}' | gzip >> {output.bioboxes_gz}
+        rm {input.bioboxes}
         """
