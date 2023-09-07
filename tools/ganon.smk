@@ -78,7 +78,7 @@ rule ganon_binning:
                                --single-reads {input.fq1} \
                                --output-prefix {params.outprefix} \
                                --threads {threads} \
-                               --verbose --output-lca \
+                               --verbose \
                                {params.fixed_args} \
                                {params.args} > {log} 2>&1
         else # paired-end
@@ -87,7 +87,7 @@ rule ganon_binning:
                                --paired-reads {input.fq1} {params.input_fq2} \
                                --output-prefix {params.outprefix} \
                                --threads {threads} \
-                               --verbose --output-lca \
+                               --verbose \
                                {params.fixed_args} \
                                {params.args} > {log} 2>&1
         fi
