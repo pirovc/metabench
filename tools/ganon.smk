@@ -72,6 +72,11 @@ rule ganon_binning:
         reassign = lambda wildcards: 1 if "--reassign" in wildcards.b_args or "--binning" in wildcards.b_args else 0 
     shell:
         """
+        output_lca=""
+        if [[ "{params.reassign}" -eq "0" ]]; then
+            output_lca="--output-lca"
+        fi
+
         if [[ -z "{params.input_fq2}" ]]; then # single-end
             {params.path}ganon classify \
                                --db-prefix {params.dbprefix} \
@@ -79,6 +84,7 @@ rule ganon_binning:
                                --output-prefix {params.outprefix} \
                                --threads {threads} \
                                --verbose \
+                               ${{output_lca}} \
                                {params.fixed_args} \
                                {params.args} > {log} 2>&1
         else # paired-end
@@ -88,6 +94,7 @@ rule ganon_binning:
                                --output-prefix {params.outprefix} \
                                --threads {threads} \
                                --verbose \
+                               ${{output_lca}} \
                                {params.fixed_args} \
                                {params.args} > {log} 2>&1
         fi
