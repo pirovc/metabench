@@ -30,6 +30,10 @@ taxonomy_files: "/misc/files/taxdump.tar.gz"
 
 threhsold_profiling:
   - 0
-  - 0.01
-  - 0.05
+  - 0.001
+  - 0.005
+
+threhsold_binning:
+  - 0
   - 0.1
+  - 1

@@ -35,7 +35,7 @@ rule evals_binning_script:
     input:
         bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes.gz"
     output:
-        cumu_json = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.cumu.json"),
+        #cumu_json = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.cumu.json"),
         rank_json = temp("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.rank.json"),
     log:
         "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.log"
@@ -44,7 +44,8 @@ rule evals_binning_script:
         ranks = " ".join(config["ranks"]),
         taxonomy_files = config["taxonomy_files"],
         db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
-        gt = lambda wildcards: config["samples"][wildcards.samp]["binning"]
+        gt = lambda wildcards: config["samples"][wildcards.samp]["binning"],
+        threhsold_binning = " ".join(map(str,config["threhsold_binning"]))
     conda: srcdir("../envs/evals.yaml")
     shell: 
         """
@@ -55,14 +56,14 @@ rule evals_binning_script:
                 {params.db_profile} \
                 --taxonomy {config[taxonomy]} \
                 --taxonomy-files {params.taxonomy_files} \
-                --output-cumulative {output.cumu_json} \
-                --output-rank {output.rank_json} 2> {log}
+                --output-rank {output.rank_json} \
+                --thresholds {params.threhsold_binning} 2> {log}
         """
 
 rule evals_binning:
     input:
         bench_json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.json",
-        cumu_json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.cumu.json",
+        #cumu_json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.cumu.json",
         rank_json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.rank.json"
     output:
         flag_update = touch("{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.updated_json")
@@ -76,8 +77,8 @@ rule evals_binning:
     run:
         out_json = json_load(input.bench_json)
         out_json["evals"] = {}
-        out_json["evals"]["cumulative-based"] = json_load(input.cumu_json)
-        out_json["evals"]["rank-based"] = json_load(input.rank_json)
+        #out_json["evals"]["cumulative-based"] = json_load(input.cumu_json)
+        out_json["evals"] = json_load(input.rank_json)
         json_write(out_json, input.bench_json)
 
 

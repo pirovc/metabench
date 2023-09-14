@@ -26,6 +26,8 @@ def main():
                         type=file_exists, nargs="*", help="")
     parser.add_argument("-r", "--ranks",          metavar="", type=str, nargs="*",
                         help="empty for default ranks (superkingdom phylum class order family genus species)")
+    parser.add_argument("-s", "--thresholds", nargs="*", type=float, default=[0],
+                        help="Thresholds to generate evaluations [0-100]")
     parser.add_argument("-c", "--output-cumulative", type=str,
                         help="Output file for evaluation in json (cumulative mode)")
     parser.add_argument("-r", "--output-rank", type=str,
@@ -82,6 +84,38 @@ def main():
     # pre-build lineages for faster access
     tax.build_lineages(ranks=fixed_ranks)
 
+    # Count read assignments by bin, independently of rank
+    # bin = taxid
+    # Here ideally instead of +1 the read. length would be summed up and bin size calculated 
+    bin_counts = defaultdict(int)
+    bin_counts_assembly = defaultdict(int)
+    bin_counts_sequence = defaultdict(int)
+    for v in res.values():
+        bin_counts[v]+=1
+    for v in res_assembly.values():
+        bin_counts_assembly[v]+=1
+    for v in res_sequence.values():
+        bin_counts_sequence[v]+=1
+
+    # Make list of taxids to ignore depending on the threshold
+    thresholds_ignore = {t:set() for t in args.thresholds}
+    
+    # len(res) = total number of reads classified, also use for assembly and sequence % calculation
+    for taxid, cnt in bin_counts.items():
+        for threshold in args.thresholds:
+            if cnt < len(res)*(threshold/100):
+                thresholds_ignore[threshold].add(taxid)
+    for assembly, cnt in bin_counts_assembly.items():
+        for threshold in args.thresholds:
+            if cnt < len(res)*(threshold/100):
+                thresholds_ignore[threshold].add(assembly)
+    for sequence, cnt in bin_counts_sequence.items():
+        for threshold in args.thresholds:
+            if cnt < len(res)*(threshold/100):
+                thresholds_ignore[threshold].add(sequence)
+
+    del bin_counts, bin_counts_assembly, bin_counts_sequence
+
     # check lineage of the gt taxids to check at which rank it could be classified given the database
     rank_gttaxid = {}
     for leaf_gttaxid in gt_leaf_taxids:
@@ -92,19 +126,18 @@ def main():
                         tax.closest_parent(t, fixed_ranks))
                     break
 
-    # 1 - check if there is an accession (uniq assignment) and if it"s correct
-    # 2 - check if taxid matches
-    #   if taxid tool = taxid gt -> correct identification at taxonomic level
-    #   if lca = tool results -> TP, meaning it got it right in a lower taxonomic level, read was more specific
-    #   if lca = gt -> FP, meaning the classification was too specific
-    cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu)
-
-    # Rank evaluation
-    rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db, db_assembly, db_sequence, tax, fixed_ranks, output_rank)
-
     if output_cumu:
+        # 1 - check if there is an accession (uniq assignment) and if it"s correct
+        # 2 - check if taxid matches
+        #   if taxid tool = taxid gt -> correct identification at taxonomic level
+        #   if lca = tool results -> TP, meaning it got it right in a lower taxonomic level, read was more specific
+        #   if lca = gt -> FP, meaning the classification was too specific
+        cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu)
         output_cumu.close()
+
     if output_rank:
+        # Rank evaluation
+        rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db, db_assembly, db_sequence, tax, fixed_ranks, thresholds_ignore, output_rank)
         output_rank.close()
 
 
@@ -245,24 +278,28 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
         json.dump(final_stats, output_cumu, indent=4)
 
 
-def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db, db_assembly, db_sequence, tax, fixed_ranks, output_rank):
+def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db, db_assembly, db_sequence, tax, fixed_ranks, thresholds_ignore, output_rank):
 
-    stats = {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0}
-    classified_ranks = defaultdict(int)
-    classified_ranks_assembly = 0
-    classified_ranks_sequence = 0
     db_ranks = defaultdict(int)
     db_ranks_assembly = 0
     db_ranks_sequence = 0
     gt_ranks = defaultdict(int)
     gt_ranks_assembly = 0
     gt_ranks_sequence = 0
-    tp_ranks = defaultdict(int)
-    tp_ranks_assembly = 0
-    tp_ranks_sequence = 0
-    fp_ranks = defaultdict(int)
-    fp_ranks_assembly = 0
-    fp_ranks_sequence = 0
+
+    stats = defaultdict(lambda: {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0})
+
+    classified_ranks = defaultdict(lambda: defaultdict(int))
+    classified_ranks_assembly = defaultdict(int)
+    classified_ranks_sequence = defaultdict(int)
+    tp_ranks = defaultdict(lambda: defaultdict(int))
+    tp_ranks_assembly = defaultdict(int)
+    tp_ranks_sequence = defaultdict(int)
+    fp_ranks = defaultdict(lambda: defaultdict(int))
+    fp_ranks_assembly = defaultdict(int)
+    fp_ranks_sequence = defaultdict(int)
+
+    total_reads_gt = len(gt)
 
     for readid, gt_taxid in gt.items():
 
@@ -289,146 +326,154 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
                     # if the is present in the database (=could be classified)
                     db_ranks[fr] += 1
 
-        if readid in res.keys():  # if read is classified
-            res_taxid = res[readid]
 
-            # has a unique assembly classification
-            if readid in res_assembly:
-                classified_ranks_assembly += 1
-                if readid in gt_assembly and res_assembly[readid] == gt_assembly[readid]:  # it is correct
-                    tp_ranks_assembly += 1
-                else:
-                    fp_ranks_assembly += 1
+        for threshold, ignore_taxids in thresholds_ignore.items():
+            threshold_key = "threshold>=" + str(threshold)
 
-            # has a unique assembly classification
-            if readid in res_sequence:
-                classified_ranks_sequence += 1
-                if readid in gt_sequence and res_sequence[readid] == gt_sequence[readid]:  # it is correct
-                    tp_ranks_sequence += 1
-                else:
-                    fp_ranks_sequence += 1
+            # if read is classified (not below threshold) 
+            if readid not in res.keys() or res[readid] in ignore_taxids:
+                stats[threshold_key]["unclassified"] += 1
+            else:
+                res_taxid = res[readid]
 
-            # already pre-built build_lineages() with fixed_ranks
-            res_lin = tax.lineage(res_taxid)
-            # compare every taxonomic rank
-            for idx, fr in enumerate(fixed_ranks):
-                if res_lin[idx]:  # if there"s a classification for such rank
-                    classified_ranks[fr] += 1
-                    if gt_lin[idx] == res_lin[idx]:
-                        tp_ranks[fr] += 1
+                # has a unique assembly classification (not below threshold)
+                if readid in res_assembly and res_assembly[readid] not in thresholds_ignore:
+                    classified_ranks_assembly[threshold_key] += 1
+                    if readid in gt_assembly and res_assembly[readid] == gt_assembly[readid]:  # it is correct
+                        tp_ranks_assembly[threshold_key] += 1
                     else:
-                        fp_ranks[fr] += 1
-        else:
-            stats["unclassified"] += 1
+                        fp_ranks_assembly[threshold_key] += 1
 
-    total_reads_gt = len(gt)
-    stats["classified"] = total_reads_gt - stats["unclassified"]
-    classified_ranks["root"] = stats["classified"]  # all have root
+                # has a unique assembly classification (not below threshold)
+                if readid in res_sequence and res_sequence[readid] not in thresholds_ignore:
+                    classified_ranks_sequence[threshold_key] += 1
+                    if readid in gt_sequence and res_sequence[readid] == gt_sequence[readid]:  # it is correct
+                        tp_ranks_sequence[threshold_key] += 1
+                    else:
+                        fp_ranks_sequence[threshold_key] += 1
+
+                # already pre-built build_lineages() with fixed_ranks
+                res_lin = tax.lineage(res_taxid)
+                # compare every taxonomic rank
+                for idx, fr in enumerate(fixed_ranks):
+                    if res_lin[idx]:  # if there"s a classification for such rank
+                        classified_ranks[threshold_key][fr] += 1
+                        if gt_lin[idx] == res_lin[idx]:
+                            tp_ranks[threshold_key][fr] += 1
+                        else:
+                            fp_ranks[threshold_key][fr] += 1
+
+
 
     fields = ["gt",
-              "db",
-              "classified",
-              "tp",
-              "fp",
-              "sensitivity_max_db",
-              "sensitivity",
-              "precision",
-              "f1_score"]
-    final_stats = {f: defaultdict() for f in fields}
-    header = ["--rank_eval--"] + fields
+          "db",
+          "classified",
+          "tp",
+          "fp",
+          "sensitivity_max_db",
+          "sensitivity",
+          "precision",
+          "f1_score"]
+    
+    final_stats = {}
+    for threshold in thresholds_ignore.keys():
+        threshold_key = "threshold>=" + str(threshold)
+        final_stats[threshold_key] = {f: defaultdict() for f in fields}
 
-    print("\t".join(header), file=sys.stderr)
+        stats[threshold_key]["classified"] = total_reads_gt - stats[threshold_key]["unclassified"]
+        classified_ranks[threshold_key]["root"] = stats[threshold_key]["classified"]  # all have root
+        
+        header = ["--rank_eval_" + threshold_key + "--"] + fields
 
-    sens_sequence = tp_ranks_sequence/total_reads_gt
-    sens_max_sequence = tp_ranks_sequence / \
-        float(db_ranks_sequence) if db_ranks_sequence > 0 else 0
-    prec_sequence = tp_ranks_sequence / \
-        classified_ranks_sequence if classified_ranks_sequence > 0 else 0
-    f1s_sequence = (2*sens_sequence*prec_sequence)/float(sens_sequence +
-                                                         prec_sequence) if sens_sequence + prec_sequence > 0 else 0
-    print("sequence",
-          gt_ranks_sequence,
-          db_ranks_sequence,
-          classified_ranks_sequence,
-          tp_ranks_sequence,
-          fp_ranks_sequence,
-          "%.5f" % sens_max_sequence,
-          "%.5f" % sens_sequence,
-          "%.5f" % prec_sequence,
-          "%.5f" % f1s_sequence, sep="\t", file=sys.stderr)
-
-    if output_rank:
-        final_stats["db"]["sequence"] = db_ranks_sequence
-        final_stats["gt"]["sequence"] = gt_ranks_sequence
-        final_stats["classified"]["sequence"] = classified_ranks_sequence
-        final_stats["tp"]["sequence"] = tp_ranks_sequence
-        final_stats["fp"]["sequence"] = fp_ranks_sequence
-        final_stats["sensitivity_max_db"]["sequence"] = sens_max_sequence
-        final_stats["sensitivity"]["sequence"] = sens_sequence
-        final_stats["precision"]["sequence"] = prec_sequence
-        final_stats["f1_score"]["sequence"] = f1s_sequence
+        print("\t".join(header), file=sys.stderr)
 
 
-    sens_assembly = tp_ranks_assembly/total_reads_gt
-    sens_max_assembly = tp_ranks_assembly / \
-        float(db_ranks_assembly) if db_ranks_assembly > 0 else 0
-    prec_assembly = tp_ranks_assembly / \
-        classified_ranks_assembly if classified_ranks_assembly > 0 else 0
-    f1s_assembly = (2*sens_assembly*prec_assembly)/float(sens_assembly +
-                                                         prec_assembly) if sens_assembly + prec_assembly > 0 else 0
-    print("assembly",
-          gt_ranks_assembly,
-          db_ranks_assembly,
-          classified_ranks_assembly,
-          tp_ranks_assembly,
-          fp_ranks_assembly,
-          "%.5f" % sens_max_assembly,
-          "%.5f" % sens_assembly,
-          "%.5f" % prec_assembly,
-          "%.5f" % f1s_assembly, sep="\t", file=sys.stderr)
 
-    if output_rank:
-        final_stats["db"]["assembly"] = db_ranks_assembly
-        final_stats["gt"]["assembly"] = gt_ranks_assembly
-        final_stats["classified"]["assembly"] = classified_ranks_assembly
-        final_stats["tp"]["assembly"] = tp_ranks_assembly
-        final_stats["fp"]["assembly"] = fp_ranks_assembly
-        final_stats["sensitivity_max_db"]["assembly"] = sens_max_assembly
-        final_stats["sensitivity"]["assembly"] = sens_assembly
-        final_stats["precision"]["assembly"] = prec_assembly
-        final_stats["f1_score"]["assembly"] = f1s_assembly
-
-    for fr in fixed_ranks[::-1]:
-        # if root, all classified are true
-        tp = tp_ranks[fr] if fr != "root" else classified_ranks[fr]
-        fp = fp_ranks[fr]
-        sens = tp/total_reads_gt
-        sens_max = tp/float(db_ranks[fr]) if db_ranks[fr] > 0 else 0
-        prec = tp/classified_ranks[fr] if classified_ranks[fr] > 0 else 0
-        f1s = (2*sens*prec)/float(sens+prec) if sens+prec > 0 else 0
-
-        print(fr,
-              gt_ranks[fr],
-              db_ranks[fr],
-              classified_ranks[fr],
-              tp,
-              fp,
-              "%.5f" % sens_max,
-              "%.5f" % sens,
-              "%.5f" % prec,
-              "%.5f" % f1s,
-              sep="\t", file=sys.stderr)
+        sens_sequence = tp_ranks_sequence[threshold_key]/total_reads_gt
+        sens_max_sequence = tp_ranks_sequence[threshold_key] / float(db_ranks_sequence) if db_ranks_sequence > 0 else 0
+        prec_sequence = tp_ranks_sequence[threshold_key] / classified_ranks_sequence[threshold_key] if classified_ranks_sequence[threshold_key] > 0 else 0
+        f1s_sequence = (2*sens_sequence*prec_sequence)/float(sens_sequence +
+                                                             prec_sequence) if sens_sequence + prec_sequence > 0 else 0
+        print("sequence",
+              gt_ranks_sequence,
+              db_ranks_sequence,
+              classified_ranks_sequence[threshold_key],
+              tp_ranks_sequence[threshold_key],
+              fp_ranks_sequence[threshold_key],
+              "%.5f" % sens_max_sequence,
+              "%.5f" % sens_sequence,
+              "%.5f" % prec_sequence,
+              "%.5f" % f1s_sequence, sep="\t", file=sys.stderr)
 
         if output_rank:
-            final_stats["db"][fr] = db_ranks[fr]
-            final_stats["gt"][fr] = gt_ranks[fr]
-            final_stats["classified"][fr] = classified_ranks[fr]
-            final_stats["tp"][fr] = tp
-            final_stats["fp"][fr] = fp
-            final_stats["sensitivity_max_db"][fr] = sens_max
-            final_stats["sensitivity"][fr] = sens
-            final_stats["precision"][fr] = prec
-            final_stats["f1_score"][fr] = f1s
+            final_stats[threshold_key]["db"]["sequence"] = db_ranks_sequence
+            final_stats[threshold_key]["gt"]["sequence"] = gt_ranks_sequence
+            final_stats[threshold_key]["classified"]["sequence"] = classified_ranks_sequence[threshold_key]
+            final_stats[threshold_key]["tp"]["sequence"] = tp_ranks_sequence[threshold_key]
+            final_stats[threshold_key]["fp"]["sequence"] = fp_ranks_sequence[threshold_key]
+            final_stats[threshold_key]["sensitivity_max_db"]["sequence"] = sens_max_sequence
+            final_stats[threshold_key]["sensitivity"]["sequence"] = sens_sequence
+            final_stats[threshold_key]["precision"]["sequence"] = prec_sequence
+            final_stats[threshold_key]["f1_score"]["sequence"] = f1s_sequence
+
+
+        sens_assembly = tp_ranks_assembly[threshold_key]/total_reads_gt
+        sens_max_assembly = tp_ranks_assembly[threshold_key] / float(db_ranks_assembly) if db_ranks_assembly > 0 else 0
+        prec_assembly = tp_ranks_assembly[threshold_key] / classified_ranks_assembly[threshold_key] if classified_ranks_assembly[threshold_key] > 0 else 0
+        f1s_assembly = (2*sens_assembly*prec_assembly)/float(sens_assembly + prec_assembly) if sens_assembly + prec_assembly > 0 else 0
+        print("assembly",
+              gt_ranks_assembly,
+              db_ranks_assembly,
+              classified_ranks_assembly[threshold_key],
+              tp_ranks_assembly[threshold_key],
+              fp_ranks_assembly[threshold_key],
+              "%.5f" % sens_max_assembly,
+              "%.5f" % sens_assembly,
+              "%.5f" % prec_assembly,
+              "%.5f" % f1s_assembly, sep="\t", file=sys.stderr)
+
+        if output_rank:
+            final_stats[threshold_key]["db"]["assembly"] = db_ranks_assembly
+            final_stats[threshold_key]["gt"]["assembly"] = gt_ranks_assembly
+            final_stats[threshold_key]["classified"]["assembly"] = classified_ranks_assembly[threshold_key]
+            final_stats[threshold_key]["tp"]["assembly"] = tp_ranks_assembly[threshold_key]
+            final_stats[threshold_key]["fp"]["assembly"] = fp_ranks_assembly[threshold_key]
+            final_stats[threshold_key]["sensitivity_max_db"]["assembly"] = sens_max_assembly
+            final_stats[threshold_key]["sensitivity"]["assembly"] = sens_assembly
+            final_stats[threshold_key]["precision"]["assembly"] = prec_assembly
+            final_stats[threshold_key]["f1_score"]["assembly"] = f1s_assembly
+
+        for fr in fixed_ranks[::-1]:
+            # if root, all classified are true
+            tp = tp_ranks[threshold_key][fr] if fr != "root" else classified_ranks[threshold_key][fr]
+            fp = fp_ranks[threshold_key][fr]
+            sens = tp/total_reads_gt
+            sens_max = tp/float(db_ranks[fr]) if db_ranks[fr] > 0 else 0
+            prec = tp/classified_ranks[threshold_key][fr] if classified_ranks[threshold_key][fr] > 0 else 0
+            f1s = (2*sens*prec)/float(sens+prec) if sens+prec > 0 else 0
+
+            print(fr,
+                  gt_ranks[fr],
+                  db_ranks[fr],
+                  classified_ranks[threshold_key][fr],
+                  tp,
+                  fp,
+                  "%.5f" % sens_max,
+                  "%.5f" % sens,
+                  "%.5f" % prec,
+                  "%.5f" % f1s,
+                  sep="\t", file=sys.stderr)
+
+            if output_rank:
+                final_stats[threshold_key]["db"][fr] = db_ranks[fr]
+                final_stats[threshold_key]["gt"][fr] = gt_ranks[fr]
+                final_stats[threshold_key]["classified"][fr] = classified_ranks[threshold_key][fr]
+                final_stats[threshold_key]["tp"][fr] = tp
+                final_stats[threshold_key]["fp"][fr] = fp
+                final_stats[threshold_key]["sensitivity_max_db"][fr] = sens_max
+                final_stats[threshold_key]["sensitivity"][fr] = sens
+                final_stats[threshold_key]["precision"][fr] = prec
+                final_stats[threshold_key]["f1_score"][fr] = f1s
 
     if output_rank:
         json.dump(final_stats, output_rank, indent=4)
@@ -460,9 +505,14 @@ def parse_bioboxes_binning(file, tax):
         readid = fields[headers["SEQUENCEID"]]
         res[readid] = taxid
 
-        if "__NCBI_ASSEMBLY_ACCESSION" in headers and len(fields) > headers["__NCBI_ASSEMBLY_ACCESSION"]:
+        # only assign values if present on header and not empty
+        if "__NCBI_ASSEMBLY_ACCESSION" in headers and \
+           fields[headers["__NCBI_ASSEMBLY_ACCESSION"]] and \
+           len(fields) > headers["__NCBI_ASSEMBLY_ACCESSION"]:
             assembly[readid] = fields[headers["__NCBI_ASSEMBLY_ACCESSION"]]
-        if "__NCBI_SEQUENCE_ACCESSION" in headers and len(fields) > headers["__NCBI_SEQUENCE_ACCESSION"]:
+        if "__NCBI_SEQUENCE_ACCESSION" in headers and \
+           fields[headers["__NCBI_SEQUENCE_ACCESSION"]] and \
+           len(fields) > headers["__NCBI_SEQUENCE_ACCESSION"]:
             sequence[readid] = fields[headers["__NCBI_SEQUENCE_ACCESSION"]]
 
 
