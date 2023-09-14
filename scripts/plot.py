@@ -30,6 +30,8 @@ def main():
         prog="plot metabench with bokeh", conflict_handler="resolve", add_help=True)
     parser.add_argument("-i", "--input",     metavar="",
                         type=str, nargs="*", required=True, help="json file(s) and/or folder(s) with json reports (recursive search)")
+    parser.add_argument("-k", "--keep-metrics",    metavar="", default=["cpu_time_seconds", "mem_rss_mb", "filter_size", "repeats", "classified", "classified_perc", "tp", "fp", "sensitivity", "sensitivity_max_db", "precision", "f1_score", "l1_norm", "l2_norm"],
+                        type=str, nargs="*", help="list of metrics to show. empty to show all.")
     parser.add_argument("-o", "--output",    metavar="",
                         type=str, help="output html file")
     parser.add_argument("-f", "--font-size",    metavar="",
@@ -50,8 +52,8 @@ def main():
                      "order",
                      "family",
                      "genus",
-                     "species",
-                     "assembly"]
+                     "species"]
+                     #"assembly"]
 
     json_files = find_json_files(args.input)
     parsed_json = parse_json(json_files)
@@ -79,7 +81,20 @@ def main():
         if "evals" in pjson and pjson["evals"]:
             tables[rep_type]["evals"] = pd.concat([tables[rep_type]["evals"], load_elements(pjson["evals"])], axis=1, ignore_index=True)
         else:
-            print(p)
+            print("no evals:" + p)
+
+
+    if args.keep_metrics:
+        idx_keep = {}
+        for t in report_types:
+            if t not in idx_keep: idx_keep[t] = {}
+            for e in ["bench", "evals"]:
+                if not tables[t][e].empty:
+                    if e not in idx_keep[t]: idx_keep[t][e] = [False * tables[t][e].index.shape[0]]
+                    for metric in args.keep_metrics:
+                        idx_keep[t][e] += tables[t][e].index.get_level_values('metric').str.endswith(metric)
+                    tables[t][e] = tables[t][e].loc[idx_keep[t][e].astype(bool)]
+
 
     # for t in report_types:
     #     for e in report_elements:

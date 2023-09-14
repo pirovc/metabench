@@ -100,21 +100,22 @@ def main():
     # Make list of taxids to ignore depending on the threshold
     thresholds_ignore = {t:set() for t in args.thresholds}
     
-    # len(res) = total number of reads classified, also use for assembly and sequence % calculation
-    for taxid, cnt in bin_counts.items():
-        for threshold in args.thresholds:
-            if cnt < len(res)*(threshold/100):
-                thresholds_ignore[threshold].add(taxid)
-    for assembly, cnt in bin_counts_assembly.items():
-        for threshold in args.thresholds:
-            if cnt < len(res)*(threshold/100):
-                thresholds_ignore[threshold].add(assembly)
-    for sequence, cnt in bin_counts_sequence.items():
-        for threshold in args.thresholds:
-            if cnt < len(res)*(threshold/100):
-                thresholds_ignore[threshold].add(sequence)
+    if args.thresholds!=[0]:
+        # len(res) = total number of reads classified, also use for assembly and sequence % calculation
+        for taxid, cnt in bin_counts.items():
+            for threshold in args.thresholds:
+                if cnt < len(res)*(threshold/100):
+                    thresholds_ignore[threshold].add(taxid)
+        for assembly, cnt in bin_counts_assembly.items():
+            for threshold in args.thresholds:
+                if cnt < len(res)*(threshold/100):
+                    thresholds_ignore[threshold].add(assembly)
+        for sequence, cnt in bin_counts_sequence.items():
+            for threshold in args.thresholds:
+                if cnt < len(res)*(threshold/100):
+                    thresholds_ignore[threshold].add(sequence)
 
-    del bin_counts, bin_counts_assembly, bin_counts_sequence
+        del bin_counts, bin_counts_assembly, bin_counts_sequence
 
     # check lineage of the gt taxids to check at which rank it could be classified given the database
     rank_gttaxid = {}
@@ -132,7 +133,7 @@ def main():
         #   if taxid tool = taxid gt -> correct identification at taxonomic level
         #   if lca = tool results -> TP, meaning it got it right in a lower taxonomic level, read was more specific
         #   if lca = gt -> FP, meaning the classification was too specific
-        cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu)
+        cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, thresholds_ignore, output_cumu)
         output_cumu.close()
 
     if output_rank:
@@ -141,16 +142,18 @@ def main():
         output_rank.close()
 
 
-def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
+def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, thresholds_ignore, output_cumu):
 
-    stats = {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0}
-    classified_ranks = defaultdict(int)
+    stats = defaultdict(lambda: {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0})
     db_ranks = defaultdict(int)
     gt_ranks = defaultdict(int)
-    tp_direct_ranks = defaultdict(int)
-    tp_indirect_ranks = defaultdict(int)
-    fp_lower_ranks = defaultdict(int)
-    fp_higher_ranks = defaultdict(int)
+    classified_ranks = defaultdict(lambda: defaultdict(int))
+    tp_direct_ranks = defaultdict(lambda: defaultdict(int))
+    tp_indirect_ranks = defaultdict(lambda: defaultdict(int))
+    fp_lower_ranks = defaultdict(lambda: defaultdict(int))
+    fp_higher_ranks = defaultdict(lambda: defaultdict(int))
+
+    total_reads_gt = len(gt)
 
     for readid, gt_taxid in gt.items():
 
@@ -162,36 +165,39 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
         if gt_taxid in rank_gttaxid:
             db_ranks[rank_gttaxid[gt_taxid]] += 1
 
-        if readid in res.keys():  # if read is classified
-            res_taxid = res[readid]
+        for threshold, ignore_taxids in thresholds_ignore.items():
+            threshold_key = "cumulative - threshold>=" + str(threshold)
 
-            # taxonomic clasification
-            r = tax.rank(tax.closest_parent(res_taxid, fixed_ranks))
-
-            classified_ranks[r] += 1
-            if r == tax.root_rank:  # root classification is equal to false
-                fp_lower_ranks[r] += 1
+            # if read is classified (not below threshold) 
+            if readid not in res.keys() or res[readid] in ignore_taxids:
+                stats[threshold_key]["unclassified"] += 1
             else:
-                if res_taxid == gt_taxid:  # tp -> perfect classification
-                    tp_direct_ranks[r] += 1
-                else:
-                    lca = L(gt_taxid, res_taxid)
-                    # tp -> conservative classification (gt is lower on tree)
-                    if lca == res_taxid:
-                        tp_indirect_ranks[r] += 1
-                    # fp -> classification to specific (gt is higher on tree)
-                    elif lca == gt_taxid:
-                        fp_higher_ranks[r] += 1
-                    else:  # fp -> lca is higher than gt and res
-                        fp_lower_ranks[r] += 1
-        else:
-            stats["unclassified"] += 1
+                res_taxid = res[readid]
 
-    total_reads_gt = len(gt)
-    stats["classified"] = total_reads_gt - stats["unclassified"]
-    stats["tp"] = sum(tp_direct_ranks.values()) + \
-        sum(tp_indirect_ranks.values())
-    stats["fp"] = stats["classified"] - stats["tp"]
+                # taxonomic classification
+                r = tax.rank(tax.closest_parent(res_taxid, fixed_ranks))
+
+                classified_ranks[threshold_key][r] += 1
+                if r == tax.root_rank:  # root classification is equal to false
+                    fp_lower_ranks[threshold_key][r] += 1
+                else:
+                    if res_taxid == gt_taxid:  # tp -> perfect classification
+                        tp_direct_ranks[threshold_key][r] += 1
+                    else:
+                        lca = L(gt_taxid, res_taxid)
+                        # tp -> conservative classification (gt is lower on tree)
+                        if lca == res_taxid:
+                            tp_indirect_ranks[threshold_key][r] += 1
+                        # fp -> classification to specific (gt is higher on tree)
+                        elif lca == gt_taxid:
+                            fp_higher_ranks[threshold_key][r] += 1
+                        else:  # fp -> lca is higher than gt and res
+                            fp_lower_ranks[threshold_key][r] += 1
+
+        
+            stats[threshold_key]["classified"] = total_reads_gt - stats[threshold_key]["unclassified"]
+            stats[threshold_key]["tp"] = sum(tp_direct_ranks[threshold_key].values()) + sum(tp_indirect_ranks[threshold_key].values())
+            stats[threshold_key]["fp"] = stats[threshold_key]["classified"] - stats[threshold_key]["tp"]
 
     fields = ["gt",
               "db",
@@ -210,69 +216,76 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, output_cumu):
               "tp_indirect",
               "fp_lower",
               "fp_higher"]
-    final_stats = {f: defaultdict() for f in fields}
-    header = ["--cumu_eval--"] + fields
 
-    # taxonomic stats
-    print("\t".join(header), file=sys.stderr)
-    cs_db = 0
-    cs_class = 0
-    cs_tp = 0
-    cs_fp = 0
+    final_stats = {}
+    final_stats["cumulative - config"] = {"db": defaultdict(), "gt": defaultdict()}
+    
+    for threshold in thresholds_ignore.keys():
+        threshold_key = "cumulative - threshold>=" + str(threshold)
 
-    for fr in fixed_ranks[::-1]:
-        tp = tp_direct_ranks[fr] + tp_indirect_ranks[fr]
-        fp = fp_lower_ranks[fr] + fp_higher_ranks[fr]
+        final_stats[threshold_key] = {f: defaultdict() for f in fields}
+        header = ["--cumu_eval_" + threshold_key + "--"] + fields
 
-        cs_db += db_ranks[fr]  # make it cumulative
-        cs_class += classified_ranks[fr]
-        cs_tp += tp
-        cs_fp += fp
+        # taxonomic stats
+        print("\t".join(header), file=sys.stderr)
+        cs_db = 0
+        cs_class = 0
+        cs_tp = 0
+        cs_fp = 0
 
-        # if root, all available
-        if fr == "root":
-            cs_db = total_reads_gt
+        for fr in fixed_ranks[::-1]:
+            tp = tp_direct_ranks[threshold_key][fr] + tp_indirect_ranks[threshold_key][fr]
+            fp = fp_lower_ranks[threshold_key][fr] + fp_higher_ranks[threshold_key][fr]
 
-        sens_max_db = cs_tp/float(cs_db) if cs_db > 0 else 0
-        sens = cs_tp/total_reads_gt
-        prec = cs_tp/float(cs_class) if cs_class > 0 else 0
-        f1s = (2*sens*prec)/float(sens+prec) if sens+prec > 0 else 0
+            cs_db += db_ranks[fr]  # make it cumulative
+            cs_class += classified_ranks[threshold_key][fr]
+            cs_tp += tp
+            cs_fp += fp
 
-        print(fr,
-              gt_ranks[fr],
-              db_ranks[fr],
-              classified_ranks[fr],
-              tp,
-              fp,
-              "%.5f" % sens_max_db,
-              "%.5f" % sens,
-              "%.5f" % prec,
-              "%.5f" % f1s,
-              cs_db,
-              cs_class,
-              cs_tp,
-              cs_fp,
-              tp_direct_ranks[fr],
-              tp_indirect_ranks[fr],
-              fp_lower_ranks[fr],
-              fp_higher_ranks[fr], sep="\t", file=sys.stderr)
+            # if root, all available
+            if fr == "root":
+                cs_db = total_reads_gt
 
-        if output_cumu:
-            final_stats["gt"][fr] = gt_ranks[fr]
-            final_stats["db"][fr] = db_ranks[fr]
-            final_stats["classified"][fr] = classified_ranks[fr]
-            final_stats["tp"][fr] = tp
-            final_stats["fp"][fr] = fp
-            final_stats["sensitivity_max_db"][fr] = sens_max_db
-            final_stats["sensitivity"][fr] = sens
-            final_stats["precision"][fr] = prec
-            final_stats["f1_score"][fr] = f1s
-            final_stats["cs_db"][fr] = cs_db
-            final_stats["cs_classified"][fr] = cs_class
-            final_stats["tp_direct"][fr] = tp_direct_ranks[fr]
-            final_stats["tp_indirect"][fr] = tp_indirect_ranks[fr]
-            final_stats["fp_lower"][fr] = fp_lower_ranks[fr]
-            final_stats["fp_higher"][fr] = fp_higher_ranks[fr]
+            sens_max_db = cs_tp/float(cs_db) if cs_db > 0 else 0
+            sens = cs_tp/total_reads_gt
+            prec = cs_tp/float(cs_class) if cs_class > 0 else 0
+            f1s = (2*sens*prec)/float(sens+prec) if sens+prec > 0 else 0
+
+            print(fr,
+                  gt_ranks[fr],
+                  db_ranks[fr],
+                  classified_ranks[threshold_key][fr],
+                  tp,
+                  fp,
+                  "%.5f" % sens_max_db,
+                  "%.5f" % sens,
+                  "%.5f" % prec,
+                  "%.5f" % f1s,
+                  cs_db,
+                  cs_class,
+                  cs_tp,
+                  cs_fp,
+                  tp_direct_ranks[threshold_key][fr],
+                  tp_indirect_ranks[threshold_key][fr],
+                  fp_lower_ranks[threshold_key][fr],
+                  fp_higher_ranks[threshold_key][fr], sep="\t", file=sys.stderr)
+
+            if output_cumu:
+                final_stats["cumulative - config"]["gt"][fr] = gt_ranks[fr]
+                final_stats["cumulative - config"]["db"][fr] = db_ranks[fr]
+                final_stats[threshold_key]["classified"][fr] = classified_ranks[threshold_key][fr]
+                final_stats[threshold_key]["tp"][fr] = tp
+                final_stats[threshold_key]["fp"][fr] = fp
+                final_stats[threshold_key]["sensitivity_max_db"][fr] = sens_max_db
+                final_stats[threshold_key]["sensitivity"][fr] = sens
+                final_stats[threshold_key]["precision"][fr] = prec
+                final_stats[threshold_key]["f1_score"][fr] = f1s
+                final_stats[threshold_key]["cs_db"][fr] = cs_db
+                final_stats[threshold_key]["cs_classified"][fr] = cs_class
+                final_stats[threshold_key]["tp_direct"][fr] = tp_direct_ranks[threshold_key][fr]
+                final_stats[threshold_key]["tp_indirect"][fr] = tp_indirect_ranks[threshold_key][fr]
+                final_stats[threshold_key]["fp_lower"][fr] = fp_lower_ranks[threshold_key][fr]
+                final_stats[threshold_key]["fp_higher"][fr] = fp_higher_ranks[threshold_key][fr]
 
     if output_cumu:
         json.dump(final_stats, output_cumu, indent=4)
@@ -328,7 +341,7 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
 
 
         for threshold, ignore_taxids in thresholds_ignore.items():
-            threshold_key = "threshold>=" + str(threshold)
+            threshold_key = "rank - threshold>=" + str(threshold)
 
             # if read is classified (not below threshold) 
             if readid not in res.keys() or res[readid] in ignore_taxids:
@@ -376,8 +389,10 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
           "f1_score"]
     
     final_stats = {}
+    final_stats["rank - config"] = {"db": defaultdict(), "gt": defaultdict()}
+
     for threshold in thresholds_ignore.keys():
-        threshold_key = "threshold>=" + str(threshold)
+        threshold_key = "rank - threshold>=" + str(threshold)
         final_stats[threshold_key] = {f: defaultdict() for f in fields}
 
         stats[threshold_key]["classified"] = total_reads_gt - stats[threshold_key]["unclassified"]
@@ -386,8 +401,6 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
         header = ["--rank_eval_" + threshold_key + "--"] + fields
 
         print("\t".join(header), file=sys.stderr)
-
-
 
         sens_sequence = tp_ranks_sequence[threshold_key]/total_reads_gt
         sens_max_sequence = tp_ranks_sequence[threshold_key] / float(db_ranks_sequence) if db_ranks_sequence > 0 else 0
@@ -406,8 +419,8 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
               "%.5f" % f1s_sequence, sep="\t", file=sys.stderr)
 
         if output_rank:
-            final_stats[threshold_key]["db"]["sequence"] = db_ranks_sequence
-            final_stats[threshold_key]["gt"]["sequence"] = gt_ranks_sequence
+            final_stats["rank - config"]["db"]["sequence"] = db_ranks_sequence
+            final_stats["rank - config"]["gt"]["sequence"] = gt_ranks_sequence
             final_stats[threshold_key]["classified"]["sequence"] = classified_ranks_sequence[threshold_key]
             final_stats[threshold_key]["tp"]["sequence"] = tp_ranks_sequence[threshold_key]
             final_stats[threshold_key]["fp"]["sequence"] = fp_ranks_sequence[threshold_key]
@@ -433,8 +446,8 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
               "%.5f" % f1s_assembly, sep="\t", file=sys.stderr)
 
         if output_rank:
-            final_stats[threshold_key]["db"]["assembly"] = db_ranks_assembly
-            final_stats[threshold_key]["gt"]["assembly"] = gt_ranks_assembly
+            final_stats["rank - config"]["db"]["assembly"] = db_ranks_assembly
+            final_stats["rank - config"]["gt"]["assembly"] = gt_ranks_assembly
             final_stats[threshold_key]["classified"]["assembly"] = classified_ranks_assembly[threshold_key]
             final_stats[threshold_key]["tp"]["assembly"] = tp_ranks_assembly[threshold_key]
             final_stats[threshold_key]["fp"]["assembly"] = fp_ranks_assembly[threshold_key]
@@ -444,6 +457,8 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
             final_stats[threshold_key]["f1_score"]["assembly"] = f1s_assembly
 
         for fr in fixed_ranks[::-1]:
+
+
             # if root, all classified are true
             tp = tp_ranks[threshold_key][fr] if fr != "root" else classified_ranks[threshold_key][fr]
             fp = fp_ranks[threshold_key][fr]
@@ -465,8 +480,8 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
                   sep="\t", file=sys.stderr)
 
             if output_rank:
-                final_stats[threshold_key]["db"][fr] = db_ranks[fr]
-                final_stats[threshold_key]["gt"][fr] = gt_ranks[fr]
+                final_stats["rank - config"]["db"][fr] = db_ranks[fr]
+                final_stats["rank - config"]["gt"][fr] = gt_ranks[fr]
                 final_stats[threshold_key]["classified"][fr] = classified_ranks[threshold_key][fr]
                 final_stats[threshold_key]["tp"][fr] = tp
                 final_stats[threshold_key]["fp"][fr] = fp

@@ -114,17 +114,17 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
     y=defaultdict(list)
     x=defaultdict(list)
     
-    fields = ["# classified",
-              "% classified",
-              "true positives",
-              "false positives",
-              "false negatives",
-              "sensitivity (max.db.)",
+    fields = ["classified",
+              "classified_perc",
+              "tp",
+              "fp",
+              "fn",
+              "sensitivity_max_db",
               "sensitivity",
               "precision",
-              "F1-score",
-              "L1-norm",
-              "L2-norm"]
+              "f1_score",
+              "l1_norm",
+              "l2_norm"]
 
 
     db_ranks = {}
@@ -196,17 +196,17 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
                   sep="\t", file=sys.stderr)
         
             if output_json:
-                final_stats[threshold_key]["# classified"][fr] = total_classified_rank
-                final_stats[threshold_key]["% classified"][fr] = total_perc_classified_rank
-                final_stats[threshold_key]["true positives"][fr] = tp
-                final_stats[threshold_key]["false positives"][fr] = fp
-                final_stats[threshold_key]["false negatives"][fr] = fn
-                final_stats[threshold_key]["sensitivity (max.db.)"][fr] = sens
+                final_stats[threshold_key]["classified"][fr] = total_classified_rank
+                final_stats[threshold_key]["classified_perc"][fr] = total_perc_classified_rank
+                final_stats[threshold_key]["tp"][fr] = tp
+                final_stats[threshold_key]["fp"][fr] = fp
+                final_stats[threshold_key]["fn"][fr] = fn
+                final_stats[threshold_key]["sensitivity_max_db"][fr] = sens
                 final_stats[threshold_key]["sensitivity"][fr] = sens
                 final_stats[threshold_key]["precision"][fr] = prec
-                final_stats[threshold_key]["F1-score"][fr] = f1s
-                final_stats[threshold_key]["L1-norm"][fr] = l1_ranks[fr]
-                final_stats[threshold_key]["L2-norm"][fr] = l2_ranks[fr]
+                final_stats[threshold_key]["f1_score"][fr] = f1s
+                final_stats[threshold_key]["l1_norm"][fr] = l1_ranks[fr]
+                final_stats[threshold_key]["l2_norm"][fr] = l2_ranks[fr]
 
             y[fr].append(prec)
             x[fr].append(sens)
