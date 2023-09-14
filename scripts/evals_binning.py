@@ -507,12 +507,12 @@ def parse_bioboxes_binning(file, tax):
 
         # only assign values if present on header and not empty
         if "__NCBI_ASSEMBLY_ACCESSION" in headers and \
-           fields[headers["__NCBI_ASSEMBLY_ACCESSION"]] and \
-           len(fields) > headers["__NCBI_ASSEMBLY_ACCESSION"]:
+           len(fields) > headers["__NCBI_ASSEMBLY_ACCESSION"] and \
+           fields[headers["__NCBI_ASSEMBLY_ACCESSION"]]:
             assembly[readid] = fields[headers["__NCBI_ASSEMBLY_ACCESSION"]]
         if "__NCBI_SEQUENCE_ACCESSION" in headers and \
-           fields[headers["__NCBI_SEQUENCE_ACCESSION"]] and \
-           len(fields) > headers["__NCBI_SEQUENCE_ACCESSION"]:
+           len(fields) > headers["__NCBI_SEQUENCE_ACCESSION"] and \
+           fields[headers["__NCBI_SEQUENCE_ACCESSION"]]:
             sequence[readid] = fields[headers["__NCBI_SEQUENCE_ACCESSION"]]
 
 
