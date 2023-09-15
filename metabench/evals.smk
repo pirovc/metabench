@@ -77,7 +77,7 @@ rule evals_binning:
                                     "binning_arguments": str2args(wildcards.b_args)}
     run:
         out_json = json_load(input.bench_json)
-        out_json["evals"] = {}
+        out_json["evals"] = {} # delete old evals in case of rewrite
         out_json["evals"].update(json_load(input.cumu_json))
         out_json["evals"].update(json_load(input.rank_json))
         json_write(out_json, input.bench_json)
@@ -127,7 +127,7 @@ rule evals_profiling:
                                     "profiling_arguments": str2args(wildcards.p_args)}
     run:
         out_json = json_load(input.bench_json)
-        out_json["evals"] = {}
+        out_json["evals"] = {}  # delete old evals in case of rewrite
         out_json["evals"] = json_load(input.json_tmp)
         json_write(out_json, input.bench_json)
 
