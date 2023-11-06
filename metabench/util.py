@@ -102,8 +102,8 @@ def json_benchmark(bench_file, report: str = "", config: dict = {}, sum_bench: d
                     # 3: "mem_vms_mb",
                     # 4: "mem_uss_mb",
                     # 5: "mem_pss_mb",
-                    6: "io_in_bytes",
-                    7: "io_out_bytes",
+                    6: "io_in_mb",
+                    7: "io_out_mb",
                     8: "mean_cpu_load",
                     9: "cpu_load"}
 

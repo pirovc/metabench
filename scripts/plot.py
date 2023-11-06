@@ -30,7 +30,7 @@ def main():
         prog="plot metabench with bokeh", conflict_handler="resolve", add_help=True)
     parser.add_argument("-i", "--input",     metavar="",
                         type=str, nargs="*", required=True, help="json file(s) and/or folder(s) with json reports (recursive search)")
-    parser.add_argument("-k", "--keep-metrics",    metavar="", default=["cpu_time_seconds", "mem_rss_mb", "filter_size", "repeats", "classified", "classified_perc", "tp", "fp", "sensitivity", "sensitivity_max_db", "precision", "f1_score", "l1_norm", "l2_norm"],
+    parser.add_argument("-k", "--keep-metrics",    metavar="", default=["cpu_time_seconds", "mem_rss_mb", "filter_size", "io_out_bytes", "repeats", "classified", "classified_perc", "tp", "fp", "sensitivity", "sensitivity_max_db", "precision", "f1_score", "l1_norm", "l2_norm"],
                         type=str, nargs="*", help="list of metrics to show. empty to show all.")
     parser.add_argument("-o", "--output",    metavar="",
                         type=str, help="output html file")
@@ -202,6 +202,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
     
     # Toggle options
     toggle_boxplot = CheckboxGroup(labels=["Show Boxplot"], active=[])
+    toggle_average = CheckboxGroup(labels=["Show Average"], active=[])
     toggle_legend = CheckboxGroup(labels=["Show legend"], active=[0])
     toggle_label = CheckboxGroup(labels=["Show labels (x)"], active=[0])
 
@@ -374,7 +375,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
     select_metric_x_compare.js_on_change('value', cb_select_metric_x_compare)
 
     # Evals
-    cb_multiselect_groups_evals, cb_multiselect_markers_color_evals, cb_toggle_boxplot_evals, cb_toggle_label_evals, cb_toggle_legend_evals = main_callbacks(cds_config, cds_evals, plot_evals, view_evals, legend_plot_evals, cds_boxplot_evals, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot)
+    cb_multiselect_groups_evals, cb_multiselect_markers_color_evals, cb_toggle_boxplot_evals, cb_toggle_label_evals, cb_toggle_legend_evals = main_callbacks(cds_config, cds_evals, plot_evals, view_evals, legend_plot_evals, cds_boxplot_evals, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average)
 
     multiselect_markers.js_on_change('value', cb_multiselect_markers_color_evals, cb_multiselect_groups_evals)
     multiselect_colors.js_on_change('value', cb_multiselect_markers_color_evals, cb_multiselect_groups_evals)
@@ -382,6 +383,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
     select_sort.js_on_change('value', cb_multiselect_groups_evals)
     cds_config.selected.js_on_change('indices', cb_multiselect_groups_evals, cb_toggle_boxplot_evals)
     toggle_boxplot.js_on_click(cb_toggle_boxplot_evals)
+    toggle_average.js_on_click(cb_toggle_boxplot_evals)
     toggle_label.js_on_click(cb_toggle_label_evals)
     toggle_legend.js_on_click(cb_toggle_legend_evals)
 
@@ -499,7 +501,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
 
 
     # Bench
-    cb_multiselect_groups_bench, cb_multiselect_markers_color_bench, cb_toggle_boxplot_bench, cb_toggle_label_bench, cb_toggle_legend_bench = main_callbacks(cds_config, cds_bench, plot_bench, view_bench, legend_plot_bench, cds_boxplot_bench, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot)
+    cb_multiselect_groups_bench, cb_multiselect_markers_color_bench, cb_toggle_boxplot_bench, cb_toggle_label_bench, cb_toggle_legend_bench = main_callbacks(cds_config, cds_bench, plot_bench, view_bench, legend_plot_bench, cds_boxplot_bench, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average)
 
     multiselect_markers.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_groups_bench)
     multiselect_colors.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_groups_bench)
@@ -507,6 +509,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
     select_sort.js_on_change('value', cb_multiselect_groups_bench)
     cds_config.selected.js_on_change('indices', cb_multiselect_groups_bench, cb_toggle_boxplot_bench)
     toggle_boxplot.js_on_click(cb_toggle_boxplot_bench)
+    toggle_average.js_on_click(cb_toggle_boxplot_bench)
     toggle_label.js_on_click(cb_toggle_label_bench)
     toggle_legend.js_on_click(cb_toggle_legend_bench)
     
@@ -545,6 +548,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
                                   row([multiselect_markers, multiselect_colors]),
                                   select_sort,
                                   toggle_boxplot,
+                                  toggle_average,
                                   toggle_legend,
                                   toggle_label]),
                          ])
@@ -809,7 +813,7 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
     #       |_____|___|
     # lower q1   q2   q3 upper
     #
-    cds_boxplot = ColumnDataSource(dict(index=[], lower=[], q1=[], q2=[], q3=[], upper=[]))
+    cds_boxplot = ColumnDataSource(dict(index=[], lower=[], q1=[], q2=[], q3=[], upper=[], avg=[]))
 
     plot = figure(title="",
                   x_range=FactorRange(factors=list(cds_config.data["name"])),
@@ -864,6 +868,9 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
     w.upper_head.size = w.lower_head.size = 20
     plot.add_layout(w)
 
+    # Average
+    plot.scatter("index", "avg", source=cds_boxplot, color="red", size=20)
+
     # add hover just to the two box renderers
     box_hover = HoverTool(renderers=[top_box, bottom_box],
                              tooltips=[
@@ -880,7 +887,7 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
 
     return plot, legend_plot, cds_boxplot
 
-def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot_target, cds_boxplot_target, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot):
+def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot_target, cds_boxplot_target, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average):
 
     cb_multiselect_target = CustomJS(
         args=dict(cds_config=cds_config,
@@ -970,9 +977,10 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
                   cds_config=cds_config,
                   cds_boxplot_target=cds_boxplot_target,
                   toggle_boxplot=toggle_boxplot,
+                  toggle_average=toggle_average,
                   plot_target=plot_target),
         code='''
-        cds_boxplot_target.data = {"index": [], "lower": [], "q1": [], "q2": [], "q3": [], "upper": []};
+        cds_boxplot_target.data = {"index": [], "lower": [], "q1": [], "q2": [], "q3": [], "upper": [], "avg": []};
 
         if(!toggle_boxplot.active.includes(0)){
             // return alpha dots
@@ -1044,6 +1052,12 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
                 cds_boxplot_target.data["q2"].push(quantile(sorted_arr, .50));
                 cds_boxplot_target.data["q3"].push(q3);
                 cds_boxplot_target.data["upper"].push(upper);
+
+                if(toggle_average.active.includes(0)){
+                    cds_boxplot_target.data["avg"].push(sorted_arr.reduce((a, b) => a + b) / sorted_arr.length);
+                }else{
+                    cds_boxplot_target.data["avg"].push([NaN]);
+                }
             }
 
         }

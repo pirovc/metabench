@@ -51,7 +51,7 @@ rule ganon_binning:
     input:
         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
     output:
-        lca=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.lca"),
+        one=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one"),
         rep="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
         tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tre")
     benchmark:
@@ -68,23 +68,17 @@ rule ganon_binning:
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if "fq2" in config["samples"][wildcards.samp] else "",
         fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
-        args = lambda wildcards: str2args(wildcards.b_args),
-        reassign = lambda wildcards: 1 if "--reassign" in wildcards.b_args or "--binning" in wildcards.b_args else 0 
+        args = lambda wildcards: str2args(wildcards.b_args)
     shell:
         """
-        output_lca=""
-        if [[ "{params.reassign}" -eq "0" ]]; then
-            output_lca="--output-lca"
-        fi
-
         if [[ -z "{params.input_fq2}" ]]; then # single-end
             {params.path}ganon classify \
                                --db-prefix {params.dbprefix} \
                                --single-reads {input.fq1} \
                                --output-prefix {params.outprefix} \
                                --threads {threads} \
+                               --output-one \
                                --verbose \
-                               ${{output_lca}} \
                                {params.fixed_args} \
                                {params.args} > {log} 2>&1
         else # paired-end
@@ -93,20 +87,17 @@ rule ganon_binning:
                                --paired-reads {input.fq1} {params.input_fq2} \
                                --output-prefix {params.outprefix} \
                                --threads {threads} \
+                               --output-one \
                                --verbose \
-                               ${{output_lca}} \
                                {params.fixed_args} \
                                {params.args} > {log} 2>&1
         fi
 
-        if [[ "{params.reassign}" -eq "1" ]]; then
-            mv {params.outprefix}.all {params.outprefix}.lca
-        fi 
         """
 
 rule ganon_binning_format:
     input: 
-        lca="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.lca",
+        one="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one",
         dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
     output:
         bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
@@ -122,7 +113,7 @@ rule ganon_binning_format:
         # Check if end of read id is "/1" and remove it
 
         join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 \
-        <(sort -t$'\t' -k 2,2 {input.lca}) \
+        <(sort -t$'\t' -k 2,2 {input.one}) \
         <(sort -t$'\t' -k 1,1 {input.dbtax}) | \
         awk 'BEGIN{{FS=OFS="\t"}}
             {{

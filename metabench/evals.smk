@@ -5,32 +5,23 @@ from collections import defaultdict
 workdir: config["workdir"]
 include: "util.py"
 
-def input_all():
+def input_all(t):
     out = []
     suffix_len = len(".bioboxes.gz")
-    for binning_file in glob.glob('**/*.binning.bioboxes.gz', recursive=True):
+    for file in glob.glob('**/*.' + t + '.bioboxes.gz', recursive=True):
         # without ".bioboxes.gz"
-        binning_file_prefix = binning_file[:-suffix_len]
+        file_prefix = file[:-suffix_len]
         # Just generate for prefixes with sample in config file
-        sample = binning_file_prefix.split("/")[2]
+        sample = file_prefix.split("/")[2]
         if sample in config["samples"].keys():
-            out.append(binning_file_prefix)
-
-    for profiling_file in glob.glob('**/*.profiling.bioboxes.gz', recursive=True):
-        # without ".bioboxes.gz"
-        profiling_file_prefix = profiling_file[:-suffix_len]
-        # Just generate for prefixes with sample in config file
-        sample = profiling_file_prefix.split("/")[2]
-        if sample in config["samples"].keys():
-            out.append(profiling_file_prefix)
-
+            out.append(file_prefix)
     return out
 
 rule all:
     input:
-        expand("{i}.{ext}", i=input_all(), ext=["bench.json", "updated_json"])
-
-
+        binning = expand("{i}.{ext}", i=input_all("binning"), ext=["bench.json", "updated_json"]),
+        profiling = expand("{i}.{ext}", i=input_all("profiling"), ext=["bench.json", "updated_json"]),
+        
 rule evals_binning_script:
     input:
         bioboxes = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes.gz"
