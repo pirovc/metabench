@@ -33,6 +33,7 @@ rule ganon_build:
                            {params.args} > {log} 2>&1
 
         if [[ -e "{params.outprefix}.hibf" ]]; then
+            rm -rf "{params.outprefix}.ibf" # remove if already existing
             ln -sr "{params.outprefix}.hibf" "{params.outprefix}.ibf"
         fi
         """

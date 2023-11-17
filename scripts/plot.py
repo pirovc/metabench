@@ -15,7 +15,7 @@ import pandas as pd
 from bokeh.io import save
 from bokeh.core.enums import MarkerType
 from bokeh.plotting import figure, output_file
-from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter, FactorRange, MultiSelect, CustomJSHover, Legend, LegendItem, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, CheckboxButtonGroup, Spacer, Range1d, TextInput, Whisker
+from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter, Div, FactorRange, MultiSelect, CustomJSHover, Legend, LegendItem, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, CheckboxButtonGroup, Spacer, Range1d, TextInput, Whisker
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.models.filters import GroupFilter, IndexFilter
 from bokeh.palettes import Category10, Category20, Colorblind, linear_palette, Turbo256
@@ -122,6 +122,8 @@ def main():
         main_tabs.append(Panel(child=plot_metabench(
             "build", tables, default_ranks, tools, rnd_names,  args), title="Build"))
 
+    main_tabs.append(Panel(child=Div(text='<a target="_blank" style="color: black" href="https://github.com/pirovc/metabench">Generated with MetaBench</a>', width=300, height=40, sizing_mode="fixed"), title="About"))
+    
     main_layout = Tabs(tabs=main_tabs)
 
     output_file(args.output, title="Metabench", mode="inline")
