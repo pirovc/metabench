@@ -29,14 +29,15 @@ rule kraken2_build:
             {params.path}kraken2-build --db {params.outprefix} --add-to-library {output.tmp_fa} >> {log} 2>&1;
         done
         
-        # Use provided tax
+        # Download taxonomy + accession2taxid
+        {params.path}kraken2-build --db {params.outprefix} --download-taxonomy >> {log} 2>&1
+
+        # If taxonomy is provided, overlap downloaded
         if [[ ! -z "{params.db_taxonomy_files}" ]]; then
             mkdir -p {params.outprefix}taxonomy
             tar xf {params.db_taxonomy_files} -C {params.outprefix}taxonomy/
         fi
 
-        # Download taxonomy + accession2taxid
-        {params.path}kraken2-build --db {params.outprefix} --download-taxonomy >> {log} 2>&1
         {params.path}kraken2-build --build --db {params.outprefix} --threads {threads} {params.args} {params.fixed_args} >> {log} 2>&1
         """
 
