@@ -23,12 +23,14 @@ rule kmcp_build:
                           --in-dir {params.db[folder]} \
                           --out-dir {output.tmp_dir} \
                           --threads {threads} \
+                          --force \
                            {params.fixed_args} \
                            {params.args} > {log} 2>&1
 
         {params.path}kmcp index \
                           --in-dir {output.tmp_dir} \
                           --out-dir {output.index_dir} \
+                          --force \
                           --threads {threads} >> {log} 2>&1
         
         # Make mapping files for KMCP targets "GCF_019263745.1_ASM1926374v1_genomic"
