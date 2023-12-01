@@ -9,7 +9,7 @@ rule ganon_build:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/ganon_env.yaml")
+        srcdir("../envs/ganon.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{dtbs}/{dtbs_args}/ganon_db",
@@ -62,7 +62,7 @@ rule ganon_binning:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/ganon_env.yaml")
+        srcdir("../envs/ganon.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}", 
@@ -144,7 +144,7 @@ rule ganon_profiling:
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
     conda:
-        srcdir("../envs/ganon_env.yaml")
+        srcdir("../envs/ganon.yaml")
     params:
         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
         ranks = lambda wildcards: " ".join(config["default_ranks"]),

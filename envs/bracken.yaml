@@ -1,9 +1,2 @@
-# Won't install with fixed channels: 
-#Encountered problems while solving:
-#  - package bracken-2.8-py27hc30c61c_0 requires libgcc-ng >=12, but none of the providers can be installed
-#channels:
-# - defaults
-# - bioconda
-# - conda-forge
 dependencies:
  - bracken=2.8
