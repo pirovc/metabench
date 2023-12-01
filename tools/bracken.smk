@@ -10,7 +10,7 @@ rule bracken_build:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/bracken.yaml")
+        srcdir("../envs/bracken-{vers}.yaml")
     params:
         path = lambda wildcards: config["tools"]["bracken"][wildcards.vers],
         outprefix = "bracken/{vers}/{dtbs}/", #no args, to link from kraken2
@@ -44,7 +44,7 @@ rule bracken_profiling:
     benchmark:
         repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
     conda:
-        srcdir("../envs/bracken.yaml")
+        srcdir("../envs/bracken-{vers}.yaml")
     params:
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/",
     shell:
@@ -60,7 +60,7 @@ rule bracken_profiling_format:
     log:
         "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes.log"
     conda:
-        srcdir("../envs/evals.yaml")
+        srcdir("../envs/evals-{vers}.yaml")
     params:
         scripts_path = srcdir("../scripts/"),
         ranks = lambda wildcards: " ".join(config["default_ranks"]),

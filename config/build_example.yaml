@@ -2,11 +2,14 @@ workdir: "/my/work/dir/databases/"
 threads: 8
 repeat: 1
 
-tools:
+# A file in the "envs" with the dependencies to be installed has to match the tool name-version.
+# Example: envs/toolA-1.6.0.yaml  and envs/toolB-latest.yaml have to exist
+# If a path is given, the pipeline will try to find the executable necessary on that path but will still install the dependencies
+tools: 
   toolA:
     "1.6.0": "/path/to/toolA/"
   toolB:
-    "2.1.2": ""
+    "latest": ""
 
 dbs:
   "database1":
@@ -43,7 +46,7 @@ run:
          args:                        # Empty will generate "default" output
 
    toolB:
-     "2.1.2":
+     "latest":
        database1:
          fixed_args:
          args:
