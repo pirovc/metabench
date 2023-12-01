@@ -95,53 +95,53 @@ Run it:
 
 `snakemake -s metabench/build.smk --configfile config/build_test.yaml --cores 8 --use-conda`
 
-If everything ran correctly, the database files will look something like:
+If everything ran correctly, the database files will be created (`tree -A databases`):
 
 ```
-$ tree -A databases
+databases/
+├── ganon
+│   └── 2.0.0
+│       └── bac_rs_refgen
+│           ├── default
+│           │   ├── ganon_db.hibf
+│           │   ├── ganon_db.ibf -> ganon_db.hibf
+│           │   └── ganon_db.tax
+│           ├── default.build.bench.json
+│           ├── default.build.bench.tsv
+│           ├── default.build.log
+│           └── default.build.size.tsv
+└── kmcp
+    └── 0.9.2
+        └── bac_rs_refgen
+            ├── default
+            │   └── kmcp_db
+            │       ├── name.map
+            │       ├── R001
+            │       │   ├── _block001.uniki
+            │       │   ├── _block002.uniki
+            │       │   ├── __db.yml
+            │       │   └── __name_mapping.tsv
+            │       ├── taxid.map
+            │       └── taxonomy
+            │           ├── citations.dmp
+            │           ├── delnodes.dmp
+            │           ├── division.dmp
+            │           ├── gc.prt
+            │           ├── gencode.dmp
+            │           ├── images.dmp
+            │           ├── merged.dmp
+            │           ├── names.dmp
+            │           ├── nodes.dmp
+            │           └── readme.txt
+            ├── default.build.bench.json
+            ├── default.build.bench.tsv
+            ├── default.build.log
+            └── default.build.size.tsv
 
-	databases/
-	├── ganon
-	│   └── 2.0.0
-	│       └── bac_rs_refgen
-	│           ├── default
-	│           │   ├── ganon_db.hibf
-	│           │   ├── ganon_db.ibf -> ganon_db.hibf
-	│           │   └── ganon_db.tax
-	│           ├── default.build.bench.json
-	│           ├── default.build.bench.tsv
-	│           ├── default.build.log
-	│           └── default.build.size.tsv
-	└── kmcp
-	    └── 0.9.2
-	        └── bac_rs_refgen
-	            ├── default
-	            │   └── kmcp_db
-	            │       ├── name.map
-	            │       ├── R001
-	            │       │   ├── _block001.uniki
-	            │       │   ├── _block002.uniki
-	            │       │   ├── __db.yml
-	            │       │   └── __name_mapping.tsv
-	            │       ├── taxid.map
-	            │       └── taxonomy
-	            │           ├── citations.dmp
-	            │           ├── delnodes.dmp
-	            │           ├── division.dmp
-	            │           ├── gc.prt
-	            │           ├── gencode.dmp
-	            │           ├── images.dmp
-	            │           ├── merged.dmp
-	            │           ├── names.dmp
-	            │           ├── nodes.dmp
-	            │           └── readme.txt
-	            ├── default.build.bench.json
-	            ├── default.build.bench.tsv
-	            ├── default.build.log
-	            └── default.build.size.tsv
-
-	11 directories, 27 files
+11 directories, 27 files
 ```
+
+`bench.json` will contain the standardized metrics for each run.
 
 Check the `config/build_example.yaml` for more examples on how to use the configuration file. Multiple databases or configuration can be executed in the same run.
 
