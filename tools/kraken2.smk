@@ -107,6 +107,9 @@ rule kraken2_binning_format:
         header = lambda wildcards: header_bioboxes_binning("kraken2", wildcards)
     shell:
         """
+        # "catch exit status 1" grep wrapper
+        c1grep() {{ grep "$@" || test $? = 1; }}
+
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
 
@@ -117,7 +120,7 @@ rule kraken2_binning_format:
             header_suffix=0;
         fi
 
-        grep "^C" {input.res} | awk -v header_suffix="${{header_suffix}}" 'FS="\\t"{{print substr($2,1,length($2)-header_suffix)"\\t"$3}}' >> {output.bioboxes}
+        c1grep "^C" {input.res} | awk -v header_suffix="${{header_suffix}}" 'FS="\\t"{{print substr($2,1,length($2)-header_suffix)"\\t"$3}}' >> {output.bioboxes}
         """
 
 # running with bracken

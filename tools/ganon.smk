@@ -127,7 +127,7 @@ rule ganon_binning_format:
                 if($4=="sequence"){{
                     print $1,$3,"",$2;
                 }}else{{
-                    print $1,$2,"","";
+                    print $1,$3,"","";
                 }}
             }}
             }}' >> {output.bioboxes}

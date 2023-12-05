@@ -34,8 +34,8 @@ MetaBench is written in Snakemake and makes use of conda/mamba internally to ins
 
 ```sh
 pip install randomname
-mamba install snakemake pandas
-mamba install "bokeh==2.4.3"
+mamba create -n metabench_env install snakemake pandas "bokeh==2.4.3"
+source activate metabench_env
 git clone https://github.com/pirovc/metabench.git
 cd metabench
 ```
@@ -52,34 +52,34 @@ genome_updater.sh -d refseq -g bacteria -c "reference genome" -f "genomic.fna.gz
 Create `config/build_test.yaml`:
 
 ```yaml
-workdir: "build_example/"
+workdir: "example/build/"
 threads: 8
 repeat: 1
 
 tools:
   ganon:
-    "latest": ""
+    "2.0.0": ""
   kmcp:
-    "latest": ""
+    "0.9.4": ""
 
 dbs:
   "bac_rs_refgen":
-    folder: "../bac_rs/refgen/files/"
+    folder: "../../bac_rs/refgen/files/"
     extension: ".fna.gz"
     taxonomy: "ncbi"
-    taxonomy_files: "../bac_rs/refgen/taxdump.tar.gz"
-    assembly_summary: "../bac_rs/refgen/assembly_summary.txt"
+    taxonomy_files: "../../bac_rs/refgen/taxdump.tar.gz"
+    assembly_summary: "../../bac_rs/refgen/assembly_summary.txt"
 
 run:
    ganon:
-     "latest":
+     "2.0.0":
        bac_rs_refgen:
          fixed_args:
-           "--ncbi-file-info": "../bac_rs/refgen/assembly_summary.txt"
+           "--ncbi-file-info": "../../bac_rs/refgen/assembly_summary.txt"
          args:
            "--max-fp": [0.0001, ""]
    kmcp:
-     "latest":
+     "0.9.4":
        bac_rs_refgen:
          fixed_args:
          args:
@@ -95,12 +95,14 @@ Run it:
 
 `snakemake -s metabench/build.smk --configfile config/build_test.yaml --cores 8 --use-conda`
 
-If everything finished correctly, the following files will be created (`tree -A build_test`):
+If everything finished correctly, the following files will be created (`tree -A example/build/`):
+
+<pre>
 
 ```
-build_test/
+example/build/
 ├── ganon
-│   └── latest
+│   └── 2.0.0
 │       └── bac_rs_refgen
 │           ├── default
 │           │   ├── ganon_db.hibf
@@ -119,7 +121,7 @@ build_test/
 │           ├── --max-fp=0.0001.build.log
 │           └── --max-fp=0.0001.build.size.tsv
 └── kmcp
-    └── latest
+    └── 0.9.4
         └── bac_rs_refgen
             ├── default
             │   └── kmcp_db
@@ -147,6 +149,8 @@ build_test/
             └── default.build.size.tsv
 ```
 
+</pre>
+
 - `*.build.bench.json` contains the standardized metrics in JSON format. If `repeat > 1` in the config file, only the fastest run is selected.
 - `*.build.bench.tsv` contains the raw benchmark metrics from Snakemake. If `repeat > 1` in the config file, one line for each run will be reported.
 - `*.build.log` contains the STDOUT and STDERR from the run.
@@ -163,35 +167,35 @@ Classification includes both binning and profiling procedures. It requires datab
 Create `config/classify_test.yaml`:
 
 ```yaml
-workdir: "classify_test/"
+workdir: "example/classify/"
 threads: 8
 repeat: 1
 
 tools:
   ganon:
-    "latest": ""
+    "2.0.0": ""
   kmcp:
-    "latest": ""
+    "0.9.4": ""
 
 samples:
   "mende.10species.10K":
-    fq1: "../files/illumina_10species.10K.1.fq.gz"
-    fq2: "../files/illumina_10species.10K.2.fq.gz"
+    fq1: "../../files/illumina_10species.10K.1.fq.gz"
+    fq2: "../../files/illumina_10species.10K.2.fq.gz"
 
 run:
   ganon:
-    "latest":
+    "2.0.0":
       dbs: 
-        "bac_rs_refgen": "../build_test/ganon/latest/bac_rs_refgen/"
+        "bac_rs_refgen": "../../example/build/ganon/2.0.0/bac_rs_refgen/"
       fixed_args:
       binning_args:
         "--rel-cutoff": [0.25, 0.8]
       profiling_args:
 
   kmcp:
-    "latest":
+    "0.9.4":
       dbs: 
-        "bac_rs_refgen": "../build_test/kmcp/latest/bac_rs_refgen/"
+        "bac_rs_refgen": "../../example/build/kmcp/0.9.4/bac_rs_refgen/"
       fixed_args:
       binning_args:
       profiling_args:
@@ -205,12 +209,14 @@ Run it:
 
 `snakemake -s metabench/classify.smk --configfile config/classify_test.yaml --cores 8 --use-conda`
 
-If everything finished correctly, the following files will be created (`tree -A classify_test`):
+If everything finished correctly, the following files will be created (`tree -A example/classify/`):
+
+<pre>
 
 ```
-classify_test
+example/classify/
 ├── ganon
-│   └── latest
+│   └── 2.0.0
 │       └── mende.10species.10K
 │           └── bac_rs_refgen
 │               ├── default
@@ -256,7 +262,7 @@ classify_test
 │                   ├── --rel-cutoff=0.8.binning.log
 │                   └── --rel-cutoff=0.8.rep
 └── kmcp
-    └── latest
+    └── 0.9.4
         └── mende.10species.10K
             └── bac_rs_refgen
                 └── default
@@ -271,6 +277,8 @@ classify_test
                     └── default.binning.log
 ```
 
+</pre>
+
 - `*.profiling.bioboxes.gz` contains the standardized profiling output in bioboxes format.
 - `*.binning.bioboxes.gz` contains the standardized binning output in bioboxes format.
 - `*.bench.json` contains the runtime metrics in JSON format. If `repeat > 1` in the config file, only the fastest run is selected. This file will be updated in the next step (evaluation).
@@ -284,17 +292,17 @@ Evaluation will calculate metrics for binning and profiling procedures. It requi
 Create `config/evals_test.yaml`:
 
 ```yaml
-workdir: "classify_test/"
+workdir: "example/classify/"
 threads: 8
 
 samples:
   "mende.10species.10K":
-    "binning": "../files/illumina_10species.10K.binning.bioboxes.gz"
-    "profiling": "../files/illumina_10species.profile.bioboxes.gz"
+    "binning": "../../files/illumina_10species.10K.binning.bioboxes.gz"
+    "profiling": "../../files/illumina_10species.profile.bioboxes.gz"
 
 # Optional, contents of the database for some metrics
 dbs:
-  "bac_rs_refgen": "../build_test/ganon/latest/bac_rs_refgen/default/ganon_db.tax"
+  "bac_rs_refgen": "../build/ganon/2.0.0/bac_rs_refgen/default/ganon_db.tax"
 
 # Ranks to evaluate
 ranks:
@@ -307,7 +315,7 @@ ranks:
   - species
 
 taxonomy: "ncbi"
-taxonomy_files: "../bac_rs/refgen/taxdump.tar.gz"
+taxonomy_files: "../../bac_rs/refgen/taxdump.tar.gz"
 
 # Set one or more thresholds for evaluation metrics [0-100]
 threhsold_profiling:
@@ -317,7 +325,6 @@ threhsold_binning:
   - 0
   - 0.05
   - 1
-
 ```
 
 Verify run with `--dry-run`:
@@ -328,12 +335,14 @@ Run it:
 
 `snakemake -s metabench/evals.smk --configfile config/evals_test.yaml --cores 8 --use-conda`
 
-If everything finished correctly, the following files will be created (`tree -A classify_test`):
+If everything finished correctly, the following files will be created (`tree -A example/classify/`):
+
+<pre>
 
 ```
-classify_test
+example/classify/
 ├── ganon
-│   └── latest
+│   └── 2.0.0
 │       └── mende.10species.10K
 │           └── bac_rs_refgen
 │               ├── default
@@ -395,7 +404,7 @@ classify_test
 │                   ├── --rel-cutoff=0.8.binning.updated_json
 │                   └── --rel-cutoff=0.8.rep
 └── kmcp
-    └── latest
+    └── 0.9.4
         └── mende.10species.10K
             └── bac_rs_refgen
                 └── default
@@ -412,8 +421,9 @@ classify_test
                     ├── default.binning.evals.log
                     ├── default.binning.log
                     └── default.binning.updated_json
-
 ```
+
+</pre>
 
 - `*.bench.json` were updated with evaluation metrics.
 - `*.evals.log` contains the STDOUT and STDERR from the evaluation run.
@@ -424,7 +434,7 @@ classify_test
 Finally, to visualize the benchmark, plot the results:
 
 ```sh
-scripts/plot.py -i classify_test/ --output results_test.html
+scripts/plot.py -i example/ --output example_dashboard.html
 ```
 
-Open the `results_test.html` in your browser and explore the results.
+Open the `example_dashboard.html` in your browser and explore the results.

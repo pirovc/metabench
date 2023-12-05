@@ -102,7 +102,7 @@ rule kmcp_binning:
                      --binning-result {params.outprefix} \
                      --taxid-map {input.taxid_map}  \
                      --name-map {input.name_map} \
-                     --taxdump {params.taxonomy_files} {params.args} >> {log} 2>&1
+                     --taxdump {params.taxonomy_files} >> {log} 2>&1
         """
 
 rule kmcp_profiling:
