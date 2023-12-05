@@ -99,9 +99,11 @@ If everything finished correctly, the following files will be created:
 
 <details>
 
-<summary>`tree -A example/build/`</summary>
+<summary>Files</summary>
 
 ```
+$ tree -A example/build/
+
 example/build/
 ├── ganon
 │   └── 2.0.0
@@ -215,9 +217,11 @@ If everything finished correctly, the following files will be created:
 
 <details>
 
-<summary>`tree -A example/classify/`</summary>
+<summary>Files</summary>
 
 ```
+$ tree -A example/classify/
+
 example/classify/
 ├── ganon
 │   └── 2.0.0
@@ -343,9 +347,11 @@ If everything finished correctly, the following files will be created:
 
 <details>
 
-<summary>`tree -A example/classify/`</summary>
+<summary>Files</summary>
 
 ```
+$ tree -A example/classify/
+
 example/classify/
 ├── ganon
 │   └── 2.0.0
