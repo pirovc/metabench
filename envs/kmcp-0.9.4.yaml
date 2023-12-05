@@ -1,0 +1,2 @@
+dependencies:
+ - kmcp==0.9.4

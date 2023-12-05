@@ -6,10 +6,9 @@ It supports:
 - multiple tools
 	- in several release versions
 - multiple databases
-	- with optional range of parameters for building
+	- multiple range of parameters
 - multiple samples
-	- for binning and profiling
-	- both with optional range of parameters
+	- for binning and profiling both with multiple range of parameters
 - multiple evaluation metrics and threshold
 - performance benchmarks with optional repeats
 
@@ -20,14 +19,14 @@ It outputs:
 
 It requires:
 - Reference sequences to build databases
-- Set of reads and ground truth in the bioboxes format to evaluate
+- Set of reads in fastq and ground truth in the bioboxes format
 
 Current configured tools:
-- ganon
-- kmcp
-- metacache
-- kraken2
-- bracken
+- ganon v2.0.0
+- kmcp v0.9.4
+- metacache v2.3.1
+- kraken2 v2.1.3
+- bracken v2.9
 
 ## Installation and requirements
 
@@ -161,13 +160,6 @@ Check the `config/build_example.yaml` for more examples on how to use the config
 
 Classification includes both binning and profiling procedures. It requires databases (as created in the build process above) and one or more samples with single or paired `fastq` files.
 
-
-Downloading some references for the build with [genome_updater](https://github.com/pirovc/genome_updater):
-
-```sh
-genome_updater.sh -d refseq -g bacteria -c "reference genome" -f "genomic.fna.gz" -o bac_rs -b refgen -t 8 -a
-```
-
 Create `config/classify_test.yaml`:
 
 ```yaml
@@ -185,9 +177,6 @@ samples:
   "mende.10species.10K":
     fq1: "../files/illumina_10species.10K.1.fq.gz"
     fq2: "../files/illumina_10species.10K.2.fq.gz"
-  "mende.400species.10K":
-    fq1: "../files/illumina_400species.10K.1.fq.gz"
-    fq2: "../files/illumina_400species.10K.2.fq.gz"
 
 run:
   ganon:
@@ -219,54 +208,10 @@ Run it:
 If everything finished correctly, the following files will be created (`tree -A classify_test`):
 
 ```
-classify_test/
+classify_test
 ├── ganon
 │   └── latest
-│       ├── mende.10species.10K
-│       │   └── bac_rs_refgen
-│       │       ├── default
-│       │       │   ├── --rel-cutoff=0.25
-│       │       │   │   ├── default.profiling.bench.json
-│       │       │   │   ├── default.profiling.bench.tsv
-│       │       │   │   ├── default.profiling.bioboxes.gz
-│       │       │   │   └── default.profiling.log
-│       │       │   ├── --rel-cutoff=0.25.binning.bench.json
-│       │       │   ├── --rel-cutoff=0.25.binning.bench.tsv
-│       │       │   ├── --rel-cutoff=0.25.binning.bioboxes.gz
-│       │       │   ├── --rel-cutoff=0.25.binning.log
-│       │       │   ├── --rel-cutoff=0.25.rep
-│       │       │   ├── --rel-cutoff=0.8
-│       │       │   │   ├── default.profiling.bench.json
-│       │       │   │   ├── default.profiling.bench.tsv
-│       │       │   │   ├── default.profiling.bioboxes.gz
-│       │       │   │   └── default.profiling.log
-│       │       │   ├── --rel-cutoff=0.8.binning.bench.json
-│       │       │   ├── --rel-cutoff=0.8.binning.bench.tsv
-│       │       │   ├── --rel-cutoff=0.8.binning.bioboxes.gz
-│       │       │   ├── --rel-cutoff=0.8.binning.log
-│       │       │   └── --rel-cutoff=0.8.rep
-│       │       └── --max-fp=0.0001
-│       │           ├── --rel-cutoff=0.25
-│       │           │   ├── default.profiling.bench.json
-│       │           │   ├── default.profiling.bench.tsv
-│       │           │   ├── default.profiling.bioboxes.gz
-│       │           │   └── default.profiling.log
-│       │           ├── --rel-cutoff=0.25.binning.bench.json
-│       │           ├── --rel-cutoff=0.25.binning.bench.tsv
-│       │           ├── --rel-cutoff=0.25.binning.bioboxes.gz
-│       │           ├── --rel-cutoff=0.25.binning.log
-│       │           ├── --rel-cutoff=0.25.rep
-│       │           ├── --rel-cutoff=0.8
-│       │           │   ├── default.profiling.bench.json
-│       │           │   ├── default.profiling.bench.tsv
-│       │           │   ├── default.profiling.bioboxes.gz
-│       │           │   └── default.profiling.log
-│       │           ├── --rel-cutoff=0.8.binning.bench.json
-│       │           ├── --rel-cutoff=0.8.binning.bench.tsv
-│       │           ├── --rel-cutoff=0.8.binning.bioboxes.gz
-│       │           ├── --rel-cutoff=0.8.binning.log
-│       │           └── --rel-cutoff=0.8.rep
-│       └── mende.400species.10K
+│       └── mende.10species.10K
 │           └── bac_rs_refgen
 │               ├── default
 │               │   ├── --rel-cutoff=0.25
@@ -312,19 +257,7 @@ classify_test/
 │                   └── --rel-cutoff=0.8.rep
 └── kmcp
     └── latest
-        ├── mende.10species.10K
-        │   └── bac_rs_refgen
-        │       └── default
-        │           ├── default
-        │           │   ├── default.profiling.bench.json
-        │           │   ├── default.profiling.bench.tsv
-        │           │   ├── default.profiling.bioboxes.gz
-        │           │   └── default.profiling.log
-        │           ├── default.binning.bench.json
-        │           ├── default.binning.bench.tsv
-        │           ├── default.binning.bioboxes.gz
-        │           └── default.binning.log
-        └── mende.400species.10K
+        └── mende.10species.10K
             └── bac_rs_refgen
                 └── default
                     ├── default
@@ -338,9 +271,160 @@ classify_test/
                     └── default.binning.log
 ```
 
+- `*.profiling.bioboxes.gz` contains the standardized profiling output in bioboxes format.
+- `*.binning.bioboxes.gz` contains the standardized binning output in bioboxes format.
+- `*.bench.json` contains the runtime metrics in JSON format. If `repeat > 1` in the config file, only the fastest run is selected. This file will be updated in the next step (evaluation).
+- `*.bench.tsv` contains the raw benchmark metrics from Snakemake. If `repeat > 1` in the config file, one line for each run will be reported.
+- `*.log` contains the STDOUT and STDERR from the run.
+
 ### Evaluations
 
+Evaluation will calculate metrics for binning and profiling procedures. It requires ground truth files for each sample
+
+Create `config/evals_test.yaml`:
+
+```yaml
+workdir: "classify_test/"
+threads: 8
+
+samples:
+  "mende.10species.10K":
+    "binning": "../files/illumina_10species.10K.binning.bioboxes.gz"
+    "profiling": "../files/illumina_10species.profile.bioboxes.gz"
+
+# Optional, contents of the database for some metrics
+dbs:
+  "bac_rs_refgen": "../build_test/ganon/latest/bac_rs_refgen/default/ganon_db.tax"
+
+# Ranks to evaluate
+ranks:
+  - superkingdom
+  - phylum
+  - class
+  - order
+  - family
+  - genus
+  - species
+
+taxonomy: "ncbi"
+taxonomy_files: "../bac_rs/refgen/taxdump.tar.gz"
+
+# Set one or more thresholds for evaluation metrics [0-100]
+threhsold_profiling:
+  - 0
+
+threhsold_binning:
+  - 0
+  - 0.05
+  - 1
+
+```
+
+Verify run with `--dry-run`:
+
+`snakemake -s metabench/evals.smk --configfile config/evals_test.yaml --cores 8 --use-conda --dry-run`
+
+Run it:
+
+`snakemake -s metabench/evals.smk --configfile config/evals_test.yaml --cores 8 --use-conda`
+
+If everything finished correctly, the following files will be created (`tree -A classify_test`):
+
+```
+classify_test
+├── ganon
+│   └── latest
+│       └── mende.10species.10K
+│           └── bac_rs_refgen
+│               ├── default
+│               │   ├── --rel-cutoff=0.25
+│               │   │   ├── default.profiling.bench.json
+│               │   │   ├── default.profiling.bench.tsv
+│               │   │   ├── default.profiling.bioboxes.gz
+│               │   │   ├── default.profiling.evals.log
+│               │   │   ├── default.profiling.log
+│               │   │   └── default.profiling.updated_json
+│               │   ├── --rel-cutoff=0.25.binning.bench.json
+│               │   ├── --rel-cutoff=0.25.binning.bench.tsv
+│               │   ├── --rel-cutoff=0.25.binning.bioboxes.gz
+│               │   ├── --rel-cutoff=0.25.binning.evals.log
+│               │   ├── --rel-cutoff=0.25.binning.log
+│               │   ├── --rel-cutoff=0.25.binning.updated_json
+│               │   ├── --rel-cutoff=0.25.rep
+│               │   ├── --rel-cutoff=0.8
+│               │   │   ├── default.profiling.bench.json
+│               │   │   ├── default.profiling.bench.tsv
+│               │   │   ├── default.profiling.bioboxes.gz
+│               │   │   ├── default.profiling.evals.log
+│               │   │   ├── default.profiling.log
+│               │   │   └── default.profiling.updated_json
+│               │   ├── --rel-cutoff=0.8.binning.bench.json
+│               │   ├── --rel-cutoff=0.8.binning.bench.tsv
+│               │   ├── --rel-cutoff=0.8.binning.bioboxes.gz
+│               │   ├── --rel-cutoff=0.8.binning.evals.log
+│               │   ├── --rel-cutoff=0.8.binning.log
+│               │   ├── --rel-cutoff=0.8.binning.updated_json
+│               │   └── --rel-cutoff=0.8.rep
+│               └── --max-fp=0.0001
+│                   ├── --rel-cutoff=0.25
+│                   │   ├── default.profiling.bench.json
+│                   │   ├── default.profiling.bench.tsv
+│                   │   ├── default.profiling.bioboxes.gz
+│                   │   ├── default.profiling.evals.log
+│                   │   ├── default.profiling.log
+│                   │   └── default.profiling.updated_json
+│                   ├── --rel-cutoff=0.25.binning.bench.json
+│                   ├── --rel-cutoff=0.25.binning.bench.tsv
+│                   ├── --rel-cutoff=0.25.binning.bioboxes.gz
+│                   ├── --rel-cutoff=0.25.binning.evals.log
+│                   ├── --rel-cutoff=0.25.binning.log
+│                   ├── --rel-cutoff=0.25.binning.updated_json
+│                   ├── --rel-cutoff=0.25.rep
+│                   ├── --rel-cutoff=0.8
+│                   │   ├── default.profiling.bench.json
+│                   │   ├── default.profiling.bench.tsv
+│                   │   ├── default.profiling.bioboxes.gz
+│                   │   ├── default.profiling.evals.log
+│                   │   ├── default.profiling.log
+│                   │   └── default.profiling.updated_json
+│                   ├── --rel-cutoff=0.8.binning.bench.json
+│                   ├── --rel-cutoff=0.8.binning.bench.tsv
+│                   ├── --rel-cutoff=0.8.binning.bioboxes.gz
+│                   ├── --rel-cutoff=0.8.binning.evals.log
+│                   ├── --rel-cutoff=0.8.binning.log
+│                   ├── --rel-cutoff=0.8.binning.updated_json
+│                   └── --rel-cutoff=0.8.rep
+└── kmcp
+    └── latest
+        └── mende.10species.10K
+            └── bac_rs_refgen
+                └── default
+                    ├── default
+                    │   ├── default.profiling.bench.json
+                    │   ├── default.profiling.bench.tsv
+                    │   ├── default.profiling.bioboxes.gz
+                    │   ├── default.profiling.evals.log
+                    │   ├── default.profiling.log
+                    │   └── default.profiling.updated_json
+                    ├── default.binning.bench.json
+                    ├── default.binning.bench.tsv
+                    ├── default.binning.bioboxes.gz
+                    ├── default.binning.evals.log
+                    ├── default.binning.log
+                    └── default.binning.updated_json
+
+```
+
+- `*.bench.json` were updated with evaluation metrics.
+- `*.evals.log` contains the STDOUT and STDERR from the evaluation run.
+- `*.updated_json` flag file to set the evaluation is over and updated the correspondent .json file
+
+### Plotting
+
+Finally, to visualize the benchmark, plot the results:
 
 ```sh
-mamba install snakemake
+scripts/plot.py -i classify_test/ --output results_test.html
 ```
+
+Open the `results_test.html` in your browser and explore the results.
