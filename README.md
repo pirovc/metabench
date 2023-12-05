@@ -95,9 +95,11 @@ Run it:
 
 `snakemake -s metabench/build.smk --configfile config/build_test.yaml --cores 8 --use-conda`
 
-If everything finished correctly, the following files will be created (`tree -A example/build/`):
+If everything finished correctly, the following files will be created:
 
-<pre>
+<details>
+
+<summary>`tree -A example/build/`</summary>
 
 ```
 example/build/
@@ -149,7 +151,7 @@ example/build/
             └── default.build.size.tsv
 ```
 
-</pre>
+</details>
 
 - `*.build.bench.json` contains the standardized metrics in JSON format. If `repeat > 1` in the config file, only the fastest run is selected.
 - `*.build.bench.tsv` contains the raw benchmark metrics from Snakemake. If `repeat > 1` in the config file, one line for each run will be reported.
@@ -209,9 +211,11 @@ Run it:
 
 `snakemake -s metabench/classify.smk --configfile config/classify_test.yaml --cores 8 --use-conda`
 
-If everything finished correctly, the following files will be created (`tree -A example/classify/`):
+If everything finished correctly, the following files will be created:
 
-<pre>
+<details>
+
+<summary>`tree -A example/classify/`</summary>
 
 ```
 example/classify/
@@ -277,7 +281,7 @@ example/classify/
                     └── default.binning.log
 ```
 
-</pre>
+</details>
 
 - `*.profiling.bioboxes.gz` contains the standardized profiling output in bioboxes format.
 - `*.binning.bioboxes.gz` contains the standardized binning output in bioboxes format.
@@ -335,9 +339,11 @@ Run it:
 
 `snakemake -s metabench/evals.smk --configfile config/evals_test.yaml --cores 8 --use-conda`
 
-If everything finished correctly, the following files will be created (`tree -A example/classify/`):
+If everything finished correctly, the following files will be created:
 
-<pre>
+<details>
+
+<summary>`tree -A example/classify/`</summary>
 
 ```
 example/classify/
@@ -423,7 +429,7 @@ example/classify/
                     └── default.binning.updated_json
 ```
 
-</pre>
+</details>
 
 - `*.bench.json` were updated with evaluation metrics.
 - `*.evals.log` contains the STDOUT and STDERR from the evaluation run.
