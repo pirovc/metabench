@@ -33,9 +33,9 @@ Current configured tools:
 MetaBench is written in Snakemake and makes use of conda/mamba internally to install dependencies. It uses Bokeh to plot the interactive dashboard.
 
 ```sh
-pip install randomname
-mamba create -n metabench_env install snakemake pandas "bokeh==2.4.3"
+mamba create -n metabench_env snakemake genome_updater pandas "bokeh==2.4.3"
 source activate metabench_env
+pip install randomname
 git clone https://github.com/pirovc/metabench.git
 cd metabench
 ```
@@ -43,10 +43,10 @@ cd metabench
 
 ### Build
 
-Downloading some references for the build with [genome_updater](https://github.com/pirovc/genome_updater):
+Downloading a small reference set for the build with [genome_updater](https://github.com/pirovc/genome_updater):
 
 ```sh
-genome_updater.sh -d refseq -g bacteria -c "reference genome" -f "genomic.fna.gz" -o bac_rs -b refgen -t 8 -a
+genome_updater.sh -d refseq -g bacteria -c "reference genome" -f "genomic.fna.gz" -o example/bac_rs -b refgen -t 8 -a
 ```
 
 Create `config/build_test.yaml`:
@@ -64,18 +64,18 @@ tools:
 
 dbs:
   "bac_rs_refgen":
-    folder: "../../bac_rs/refgen/files/"
+    folder: "../bac_rs/refgen/files/"
     extension: ".fna.gz"
     taxonomy: "ncbi"
-    taxonomy_files: "../../bac_rs/refgen/taxdump.tar.gz"
-    assembly_summary: "../../bac_rs/refgen/assembly_summary.txt"
+    taxonomy_files: "../bac_rs/refgen/taxdump.tar.gz"
+    assembly_summary: "../bac_rs/refgen/assembly_summary.txt"
 
 run:
    ganon:
      "2.0.0":
        bac_rs_refgen:
          fixed_args:
-           "--ncbi-file-info": "../../bac_rs/refgen/assembly_summary.txt"
+           "--ncbi-file-info": "../bac_rs/refgen/assembly_summary.txt"
          args:
            "--max-fp": [0.0001, ""]
    kmcp:
@@ -293,6 +293,8 @@ example/classify/
 - `*.bench.tsv` contains the raw benchmark metrics from Snakemake. If `repeat > 1` in the config file, one line for each run will be reported.
 - `*.log` contains the STDOUT and STDERR from the run.
 
+Check the `config/classify_example.yaml` for more examples on how to use the configuration file. Multiple databases, samples, range of parameters and others can be configured to be executed in the same run.
+
 ### Evaluations
 
 Evaluation will calculate metrics for binning and profiling procedures. It requires ground truth files for each sample
@@ -323,7 +325,7 @@ ranks:
   - species
 
 taxonomy: "ncbi"
-taxonomy_files: "../../bac_rs/refgen/taxdump.tar.gz"
+taxonomy_files: "../bac_rs/refgen/taxdump.tar.gz"
 
 # Set one or more thresholds for evaluation metrics [0-100]
 threhsold_profiling:
@@ -441,12 +443,14 @@ example/classify/
 - `*.evals.log` contains the STDOUT and STDERR from the evaluation run.
 - `*.updated_json` flag file to set the evaluation is over and updated the correspondent .json file
 
+Check the `config/evals_example.yaml` for more examples on how to use the configuration file. Multiple samples and thresholds can be configured to be executed in the same run.
+
 ### Plotting
 
 Finally, to visualize the benchmark, plot the results:
 
 ```sh
-scripts/plot.py -i example/ --output example_dashboard.html
+scripts/plot.py -i example/ --output example/dashboard.html
 ```
 
-Open the `example_dashboard.html` in your browser and explore the results.
+Open the `example/dashboard.html` in your browser and explore the results.

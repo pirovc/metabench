@@ -32,6 +32,8 @@ def main():
                         help="Output file for evaluation in json (cumulative mode)")
     parser.add_argument("-r", "--output-rank", type=str,
                         help="Output file for evaluation in json (rank mode)")
+    parser.add_argument("-v", "--version", action="version",
+                        version="%(prog)s 1.0.0")
     args = parser.parse_args()
 
     tax = parse_tax(args.taxonomy, args.taxonomy_files)
@@ -86,21 +88,21 @@ def main():
 
     # Count read assignments by bin, independently of rank
     # bin = taxid
-    # Here ideally instead of +1 the read. length would be summed up and bin size calculated 
+    # Here ideally instead of +1 the read. length would be summed up and bin size calculated
     bin_counts = defaultdict(int)
     bin_counts_assembly = defaultdict(int)
     bin_counts_sequence = defaultdict(int)
     for v in res.values():
-        bin_counts[v]+=1
+        bin_counts[v] += 1
     for v in res_assembly.values():
-        bin_counts_assembly[v]+=1
+        bin_counts_assembly[v] += 1
     for v in res_sequence.values():
-        bin_counts_sequence[v]+=1
+        bin_counts_sequence[v] += 1
 
     # Make list of taxids to ignore depending on the threshold
-    thresholds_ignore = {t:set() for t in args.thresholds}
-    
-    if args.thresholds!=[0]:
+    thresholds_ignore = {t: set() for t in args.thresholds}
+
+    if args.thresholds != [0]:
         # len(res) = total number of reads classified, also use for assembly and sequence % calculation
         for taxid, cnt in bin_counts.items():
             for threshold in args.thresholds:
@@ -133,18 +135,21 @@ def main():
         #   if taxid tool = taxid gt -> correct identification at taxonomic level
         #   if lca = tool results -> TP, meaning it got it right in a lower taxonomic level, read was more specific
         #   if lca = gt -> FP, meaning the classification was too specific
-        cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, thresholds_ignore, output_cumu)
+        cumulative_eval(res, gt, tax, fixed_ranks, L,
+                        rank_gttaxid, thresholds_ignore, output_cumu)
         output_cumu.close()
 
     if output_rank:
         # Rank evaluation
-        rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db, db_assembly, db_sequence, tax, fixed_ranks, thresholds_ignore, output_rank)
+        rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
+                  db_assembly, db_sequence, tax, fixed_ranks, thresholds_ignore, output_rank)
         output_rank.close()
 
 
 def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, thresholds_ignore, output_cumu):
 
-    stats = defaultdict(lambda: {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0})
+    stats = defaultdict(
+        lambda: {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0})
     db_ranks = defaultdict(int)
     gt_ranks = defaultdict(int)
     classified_ranks = defaultdict(lambda: defaultdict(int))
@@ -168,7 +173,7 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, thresholds_ignor
         for threshold, ignore_taxids in thresholds_ignore.items():
             threshold_key = "cumulative - threshold>=" + str(threshold)
 
-            # if read is classified (not below threshold) 
+            # if read is classified (not below threshold)
             if readid not in res.keys() or res[readid] in ignore_taxids:
                 stats[threshold_key]["unclassified"] += 1
             else:
@@ -194,10 +199,12 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, thresholds_ignor
                         else:  # fp -> lca is higher than gt and res
                             fp_lower_ranks[threshold_key][r] += 1
 
-        
-            stats[threshold_key]["classified"] = total_reads_gt - stats[threshold_key]["unclassified"]
-            stats[threshold_key]["tp"] = sum(tp_direct_ranks[threshold_key].values()) + sum(tp_indirect_ranks[threshold_key].values())
-            stats[threshold_key]["fp"] = stats[threshold_key]["classified"] - stats[threshold_key]["tp"]
+            stats[threshold_key]["classified"] = total_reads_gt - \
+                stats[threshold_key]["unclassified"]
+            stats[threshold_key]["tp"] = sum(tp_direct_ranks[threshold_key].values(
+            )) + sum(tp_indirect_ranks[threshold_key].values())
+            stats[threshold_key]["fp"] = stats[threshold_key]["classified"] - \
+                stats[threshold_key]["tp"]
 
     fields = ["gt",
               "db",
@@ -218,8 +225,9 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, thresholds_ignor
               "fp_higher"]
 
     final_stats = {}
-    final_stats["cumulative - config"] = {"db": defaultdict(), "gt": defaultdict()}
-    
+    final_stats["cumulative - config"] = {
+        "db": defaultdict(), "gt": defaultdict()}
+
     for threshold in thresholds_ignore.keys():
         threshold_key = "cumulative - threshold>=" + str(threshold)
 
@@ -234,8 +242,10 @@ def cumulative_eval(res, gt, tax, fixed_ranks, L, rank_gttaxid, thresholds_ignor
         cs_fp = 0
 
         for fr in fixed_ranks[::-1]:
-            tp = tp_direct_ranks[threshold_key][fr] + tp_indirect_ranks[threshold_key][fr]
-            fp = fp_lower_ranks[threshold_key][fr] + fp_higher_ranks[threshold_key][fr]
+            tp = tp_direct_ranks[threshold_key][fr] + \
+                tp_indirect_ranks[threshold_key][fr]
+            fp = fp_lower_ranks[threshold_key][fr] + \
+                fp_higher_ranks[threshold_key][fr]
 
             cs_db += db_ranks[fr]  # make it cumulative
             cs_class += classified_ranks[threshold_key][fr]
@@ -300,7 +310,8 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
     gt_ranks_assembly = 0
     gt_ranks_sequence = 0
 
-    stats = defaultdict(lambda: {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0})
+    stats = defaultdict(
+        lambda: {"classified": 0, "unclassified": 0, "tp": 0, "fp": 0})
 
     classified_ranks = defaultdict(lambda: defaultdict(int))
     classified_ranks_assembly = defaultdict(int)
@@ -339,11 +350,10 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
                     # if the is present in the database (=could be classified)
                     db_ranks[fr] += 1
 
-
         for threshold, ignore_taxids in thresholds_ignore.items():
             threshold_key = "rank - threshold>=" + str(threshold)
 
-            # if read is classified (not below threshold) 
+            # if read is classified (not below threshold)
             if readid not in res.keys() or res[readid] in ignore_taxids:
                 stats[threshold_key]["unclassified"] += 1
             else:
@@ -352,7 +362,8 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
                 # has a unique assembly classification (not below threshold)
                 if readid in res_assembly and res_assembly[readid] not in thresholds_ignore:
                     classified_ranks_assembly[threshold_key] += 1
-                    if readid in gt_assembly and res_assembly[readid] == gt_assembly[readid]:  # it is correct
+                    # it is correct
+                    if readid in gt_assembly and res_assembly[readid] == gt_assembly[readid]:
                         tp_ranks_assembly[threshold_key] += 1
                     else:
                         fp_ranks_assembly[threshold_key] += 1
@@ -360,7 +371,8 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
                 # has a unique assembly classification (not below threshold)
                 if readid in res_sequence and res_sequence[readid] not in thresholds_ignore:
                     classified_ranks_sequence[threshold_key] += 1
-                    if readid in gt_sequence and res_sequence[readid] == gt_sequence[readid]:  # it is correct
+                    # it is correct
+                    if readid in gt_sequence and res_sequence[readid] == gt_sequence[readid]:
                         tp_ranks_sequence[threshold_key] += 1
                     else:
                         fp_ranks_sequence[threshold_key] += 1
@@ -376,18 +388,16 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
                         else:
                             fp_ranks[threshold_key][fr] += 1
 
-
-
     fields = ["gt",
-          "db",
-          "classified",
-          "tp",
-          "fp",
-          "sensitivity_max_db",
-          "sensitivity",
-          "precision",
-          "f1_score"]
-    
+              "db",
+              "classified",
+              "tp",
+              "fp",
+              "sensitivity_max_db",
+              "sensitivity",
+              "precision",
+              "f1_score"]
+
     final_stats = {}
     final_stats["rank - config"] = {"db": defaultdict(), "gt": defaultdict()}
 
@@ -395,16 +405,20 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
         threshold_key = "rank - threshold>=" + str(threshold)
         final_stats[threshold_key] = {f: defaultdict() for f in fields}
 
-        stats[threshold_key]["classified"] = total_reads_gt - stats[threshold_key]["unclassified"]
-        classified_ranks[threshold_key]["root"] = stats[threshold_key]["classified"]  # all have root
-        
+        stats[threshold_key]["classified"] = total_reads_gt - \
+            stats[threshold_key]["unclassified"]
+        # all have root
+        classified_ranks[threshold_key]["root"] = stats[threshold_key]["classified"]
+
         header = ["--rank_eval_" + threshold_key + "--"] + fields
 
         print("\t".join(header), file=sys.stderr)
 
         sens_sequence = tp_ranks_sequence[threshold_key]/total_reads_gt
-        sens_max_sequence = tp_ranks_sequence[threshold_key] / float(db_ranks_sequence) if db_ranks_sequence > 0 else 0
-        prec_sequence = tp_ranks_sequence[threshold_key] / classified_ranks_sequence[threshold_key] if classified_ranks_sequence[threshold_key] > 0 else 0
+        sens_max_sequence = tp_ranks_sequence[threshold_key] / \
+            float(db_ranks_sequence) if db_ranks_sequence > 0 else 0
+        prec_sequence = tp_ranks_sequence[threshold_key] / \
+            classified_ranks_sequence[threshold_key] if classified_ranks_sequence[threshold_key] > 0 else 0
         f1s_sequence = (2*sens_sequence*prec_sequence)/float(sens_sequence +
                                                              prec_sequence) if sens_sequence + prec_sequence > 0 else 0
         print("sequence",
@@ -429,11 +443,13 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
             final_stats[threshold_key]["precision"]["sequence"] = prec_sequence
             final_stats[threshold_key]["f1_score"]["sequence"] = f1s_sequence
 
-
         sens_assembly = tp_ranks_assembly[threshold_key]/total_reads_gt
-        sens_max_assembly = tp_ranks_assembly[threshold_key] / float(db_ranks_assembly) if db_ranks_assembly > 0 else 0
-        prec_assembly = tp_ranks_assembly[threshold_key] / classified_ranks_assembly[threshold_key] if classified_ranks_assembly[threshold_key] > 0 else 0
-        f1s_assembly = (2*sens_assembly*prec_assembly)/float(sens_assembly + prec_assembly) if sens_assembly + prec_assembly > 0 else 0
+        sens_max_assembly = tp_ranks_assembly[threshold_key] / \
+            float(db_ranks_assembly) if db_ranks_assembly > 0 else 0
+        prec_assembly = tp_ranks_assembly[threshold_key] / \
+            classified_ranks_assembly[threshold_key] if classified_ranks_assembly[threshold_key] > 0 else 0
+        f1s_assembly = (2*sens_assembly*prec_assembly)/float(sens_assembly +
+                                                             prec_assembly) if sens_assembly + prec_assembly > 0 else 0
         print("assembly",
               gt_ranks_assembly,
               db_ranks_assembly,
@@ -458,13 +474,13 @@ def rank_eval(res, res_assembly, res_sequence, gt, gt_assembly, gt_sequence, db,
 
         for fr in fixed_ranks[::-1]:
 
-
             # if root, all classified are true
             tp = tp_ranks[threshold_key][fr] if fr != "root" else classified_ranks[threshold_key][fr]
             fp = fp_ranks[threshold_key][fr]
             sens = tp/total_reads_gt
             sens_max = tp/float(db_ranks[fr]) if db_ranks[fr] > 0 else 0
-            prec = tp/classified_ranks[threshold_key][fr] if classified_ranks[threshold_key][fr] > 0 else 0
+            prec = tp / \
+                classified_ranks[threshold_key][fr] if classified_ranks[threshold_key][fr] > 0 else 0
             f1s = (2*sens*prec)/float(sens+prec) if sens+prec > 0 else 0
 
             print(fr,
@@ -500,15 +516,17 @@ def parse_bioboxes_binning(file, tax):
     res = {}
     assembly = {}
     sequence = {}
-    ## Default headers in case none is provided
+    # Default headers in case none is provided
     headers = {"SEQUENCEID": 0, "TAXID": 1}
     for line in gzip.open(file, "rt") if file.endswith(".gz") else open(file, "r"):
         if line[0] == "@":
             if line[1] == "@":
                 # If provided, parse custom headers
-                headers = {h.replace("@",""): i for i, h in enumerate(line.rstrip().split("\t"))}
-                if len(headers)<2:
-                    sys.stderr.write(file + ": " + "incomplete header entries [" + line + "]\n")
+                headers = {h.replace("@", ""): i for i,
+                           h in enumerate(line.rstrip().split("\t"))}
+                if len(headers) < 2:
+                    sys.stderr.write(
+                        file + ": " + "incomplete header entries [" + line + "]\n")
                     sys.exit(1)
             continue
 
@@ -529,7 +547,6 @@ def parse_bioboxes_binning(file, tax):
            len(fields) > headers["__NCBI_SEQUENCE_ACCESSION"] and \
            fields[headers["__NCBI_SEQUENCE_ACCESSION"]]:
             sequence[readid] = fields[headers["__NCBI_SEQUENCE_ACCESSION"]]
-
 
     if not_found_tax:
         for t in not_found_tax:

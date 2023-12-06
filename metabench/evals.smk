@@ -5,6 +5,8 @@ from collections import defaultdict
 workdir: config["workdir"]
 include: "util.py"
 
+print("MetaBench v" + version)
+
 def input_all(t):
     out = []
     suffix_len = len(".bioboxes.gz")

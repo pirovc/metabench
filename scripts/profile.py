@@ -6,6 +6,7 @@ import json
 from util import default_ranks, parse_tax, file_exists
 from collections import OrderedDict
 
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -30,7 +31,8 @@ def main():
     args = parser.parse_args()
 
     tax = parse_tax(args.taxonomy, args.taxonomy_files)
-    fixed_ranks = args.ranks if args.ranks else default_ranks[1:]  # without root
+    # without root
+    fixed_ranks = args.ranks if args.ranks else default_ranks[1:]
     tax.build_lineages(ranks=fixed_ranks)
 
     with open(args.input_file, "r") as file:
@@ -38,20 +40,25 @@ def main():
             fields = line.rstrip().split("\t")
             taxid = tax.latest(fields[args.taxid_col])
             rank = tax.rank(taxid)
-            if taxid==tax.undefined_node or rank==tax.undefined_rank:
-                sys.stderr.write("[" + line.rstrip() + "] skipping taxid/rank not defined in taxonomy\n")
-            elif rank not in fixed_ranks: 
-                sys.stderr.write("[" + line.rstrip() + "] skipping - not in defined ranks\n")
+            if taxid == tax.undefined_node or rank == tax.undefined_rank:
+                sys.stderr.write(
+                    "[" + line.rstrip() + "] skipping taxid/rank not defined in taxonomy\n")
+            elif rank not in fixed_ranks:
+                sys.stderr.write(
+                    "[" + line.rstrip() + "] skipping - not in defined ranks\n")
             else:
                 prof = ""
                 prof += taxid + "\t"
                 prof += rank + "\t"
-                prof += "|".join(tax.lineage(taxid, ranks=fixed_ranks[0:fixed_ranks.index(rank)+1])) + "\t"
-                prof += "|".join(tax.name_lineage(taxid, ranks=fixed_ranks[0:fixed_ranks.index(rank)+1])) + "\t"
+                prof += "|".join(tax.lineage(taxid,
+                                             ranks=fixed_ranks[0:fixed_ranks.index(rank)+1])) + "\t"
+                prof += "|".join(tax.name_lineage(taxid,
+                                                  ranks=fixed_ranks[0:fixed_ranks.index(rank)+1])) + "\t"
                 prof += fields[args.perc_col] + "\n"
                 sys.stdout.write(prof)
 
     return True
+
 
 if __name__ == "__main__":
     sys.exit(0 if main() else 1)

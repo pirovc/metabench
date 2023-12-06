@@ -6,6 +6,7 @@ include: "../tools/kmcp.smk"
 include: "../tools/kraken2.smk"
 include: "../tools/metacache.smk"
 
+print("MetaBench v" + version)
 
 if "default_ranks" not in config:
     config["default_ranks"] = ["superkingdom",

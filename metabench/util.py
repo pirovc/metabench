@@ -3,6 +3,7 @@ import numpy as np
 import datetime
 import json
 
+version = "1.0.0"
 default_value = "default"
 
 def join_args(args):

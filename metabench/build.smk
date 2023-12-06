@@ -6,6 +6,8 @@ include: "../tools/kmcp.smk"
 include: "../tools/kraken2.smk"
 include: "../tools/metacache.smk"
 
+print("MetaBench v" + version)
+
 def input_build():
     out = []
     for tool in config["tools"]:

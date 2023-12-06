@@ -30,6 +30,8 @@ def main():
                         help="Thresholds to generate evaluations [0-100]")
     parser.add_argument("-j", "--output-json", type=str,
                         help="Output file for evaluation in json")
+    parser.add_argument("-v", "--version", action="version",
+                        version="%(prog)s 1.0.0")
     args = parser.parse_args()
 
     tax = parse_tax(args.taxonomy, args.taxonomy_files)
@@ -106,14 +108,14 @@ def main():
 
     if output_json:
         output_json.close()
-    
+
 
 def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
 
     final_stats = {}
-    y=defaultdict(list)
-    x=defaultdict(list)
-    
+    y = defaultdict(list)
+    x = defaultdict(list)
+
     fields = ["classified",
               "classified_perc",
               "tp",
@@ -125,7 +127,6 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
               "f1_score",
               "l1_norm",
               "l2_norm"]
-
 
     db_ranks = {}
     for rank in fixed_ranks:
@@ -140,33 +141,34 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
         fn_ranks = defaultdict(int)
         l1_ranks = defaultdict(float)
         l2_ranks = defaultdict(float)
-        
+
         threshold_key = "threshold>=" + str(threshold)
         final_stats[threshold_key] = {f: defaultdict() for f in fields}
 
         res_thr = {}
         for rank in fixed_ranks:
-            res_thr[rank] = {t:a for t, a in res[rank].items() if a >= threshold}
+            res_thr[rank] = {t: a for t,
+                             a in res[rank].items() if a >= threshold}
 
         for rank in fixed_ranks:
             res_taxids = set(res_thr[rank].keys())
             gt_taxids = set(gt[rank].keys())
-            
+
             # intersection is true positive
             tp_ranks[rank] = len(res_taxids.intersection(gt_taxids))
             # everything on res not in gt is a false positive
             fp_ranks[rank] = len(res_taxids.difference(gt_taxids))
             # everything on gt not in res is a false negative
             fn_ranks[rank] = len(gt_taxids.difference(res_taxids))
-            
+
             for gt_taxid, gt_abundance in gt[rank].items():
                 res_abundance = res_thr[rank][gt_taxid] if gt_taxid in res_thr[rank] else 0
                 d = gt_abundance - res_abundance
                 l1_ranks[rank] += abs(d)
-                l2_ranks[rank] += pow(d,2)
+                l2_ranks[rank] += pow(d, 2)
 
         header = ["--" + threshold_key + "--"] + fields
-                  
+
         print("\t".join(header), file=sys.stderr)
 
         for fr in fixed_ranks[::-1]:
@@ -194,7 +196,7 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
                   l1_ranks[fr],
                   l2_ranks[fr],
                   sep="\t", file=sys.stderr)
-        
+
             if output_json:
                 final_stats[threshold_key]["classified"][fr] = total_classified_rank
                 final_stats[threshold_key]["classified_perc"][fr] = total_perc_classified_rank
@@ -211,7 +213,6 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
             y[fr].append(prec)
             x[fr].append(sens)
 
-    
     final_stats["summary"] = {"aupr": defaultdict()}
     final_stats["config"] = {"db": defaultdict(), "gt": defaultdict()}
     for fr in fixed_ranks[::-1]:
@@ -227,6 +228,7 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
 
     if output_json:
         json.dump(final_stats, output_json, indent=4)
+
 
 if __name__ == "__main__":
     main()

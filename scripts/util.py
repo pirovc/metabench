@@ -11,6 +11,7 @@ default_ranks = ["root",
                  "genus",
                  "species"]
 
+
 def parse_tax(tax, files):
     tax_args = {"undefined_node": "",
                 "undefined_rank": "",
