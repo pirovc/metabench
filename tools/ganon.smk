@@ -116,24 +116,25 @@ rule ganon_binning_format:
         # 1.1 readid
         # 1.2 taxid
         # 2.2 parent taxid
+        # 2.3 rank  
 
-        join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2" -a 1 \
+        join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 \
         <(sort -t$'\t' -k 2,2 {input.one}) \
         <(sort -t$'\t' -k 1,1 {input.dbtax}) | \
         awk 'BEGIN{{FS=OFS="\t"}}
             {{
-            if(substr($1,length($1)-1)=="/1"){{
-                $1=substr($1,0,length($1)-2);
-            }};
-            if($4=="assembly"){{
-                print $1,$3,$2,"";
-            }}else{{
-                if($4=="sequence"){{
+                if(substr($1,length($1)-1)=="/1"){{
+                    $1=substr($1,0,length($1)-2);
+                }};
+                if($4=="assembly"){{
+                    print $1,$3,$2,"";
+                }}else if($4=="sequence"){{
                     print $1,$3,"",$2;
+                }}else if($4=="file"){{
+                    print $1,$3,"","";
                 }}else{{
                     print $1,$2,"","";
                 }}
-            }}
             }}' >> {output.bioboxes}
         """
 
