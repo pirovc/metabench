@@ -113,7 +113,11 @@ rule ganon_binning_format:
         # also report entries not matching .tax (-a 1)
         # Check if end of read id is "/1" and remove it
 
-        join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 \
+        # 1.1 readid
+        # 1.2 taxid
+        # 2.2 parent taxid
+
+        join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2" -a 1 \
         <(sort -t$'\t' -k 2,2 {input.one}) \
         <(sort -t$'\t' -k 1,1 {input.dbtax}) | \
         awk 'BEGIN{{FS=OFS="\t"}}
@@ -127,7 +131,7 @@ rule ganon_binning_format:
                 if($4=="sequence"){{
                     print $1,$3,"",$2;
                 }}else{{
-                    print $1,$3,"","";
+                    print $1,$2,"","";
                 }}
             }}
             }}' >> {output.bioboxes}
