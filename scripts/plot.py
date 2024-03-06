@@ -30,7 +30,7 @@ def main():
         prog="plot metabench with bokeh", conflict_handler="resolve", add_help=True)
     parser.add_argument("-i", "--input",     metavar="",
                         type=str, nargs="*", required=True, help="json file(s) and/or folder(s) with json reports (recursive search)")
-    parser.add_argument("-k", "--keep-metrics",    metavar="", default=["cpu_time_seconds", "mem_rss_mb", "filter_size", "io_out_bytes", "repeats", "classified", "classified_perc", "tp", "fp", "sensitivity", "sensitivity_max_db", "precision", "f1_score", "l1_norm", "l2_norm"],
+    parser.add_argument("-k", "--keep-metrics",    metavar="", default=["cpu_time_seconds", "mem_rss_mb", "total_size_bytes", "io_in_mb", "io_out_mb", "repeats", "classified", "classified_perc", "tp", "fp", "sensitivity", "sensitivity_max_db", "precision", "f1_score", "l1_norm", "l2_norm"],
                         type=str, nargs="*", help="list of metrics to show. empty to show all.")
     parser.add_argument("-o", "--output",    metavar="",
                         type=str, help="output html file")
@@ -126,7 +126,7 @@ def main():
     
     main_layout = Tabs(tabs=main_tabs)
 
-    output_file(args.output, title="Metabench", mode="inline")
+    output_file(args.output, title="MetaBench", mode="inline")
     save(main_layout)
 
     return True

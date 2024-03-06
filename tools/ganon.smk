@@ -50,51 +50,70 @@ rule ganon_build_size:
 
 rule ganon_binning:
     input:
-        fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
+        paired_reads = lambda wildcards: [os.path.abspath(config["samples"][wildcards.samp]["fq1"]),
+                                          os.path.abspath(config["samples"][wildcards.samp]["fq2"])],
+        db = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.hibf"
     output:
-        one=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one"),
         rep="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
+        one=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one"),
         tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tre")
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])
     log:
         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.log"
-    threads:
-        config["threads"]
-    conda:
-        srcdir("../envs/ganon-{vers}.yaml")
     params:
-        path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
-        outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}", 
-        dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
-        input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if "fq2" in config["samples"][wildcards.samp] else "",
-        fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
-        args = lambda wildcards: str2args(wildcards.b_args)
-    shell:
-        """
-        if [[ -z "{params.input_fq2}" ]]; then # single-end
-            {params.path}ganon classify \
-                               --db-prefix {params.dbprefix} \
-                               --single-reads {input.fq1} \
-                               --output-prefix {params.outprefix} \
-                               --threads {threads} \
-                               --output-one \
-                               --verbose \
-                               {params.fixed_args} \
-                               {params.args} > {log} 2>&1
-        else # paired-end
-            {params.path}ganon classify \
-                               --db-prefix {params.dbprefix} \
-                               --paired-reads {input.fq1} {params.input_fq2} \
-                               --output-prefix {params.outprefix} \
-                               --threads {threads} \
-                               --output-one \
-                               --verbose \
-                               {params.fixed_args} \
-                               {params.args} > {log} 2>&1
-        fi
+        extra=lambda wildcards: str2args(wildcards.b_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
+    wrapper:
+        "file:/home/pirov/code/metabench/wrappers/ganon/{vers}/classify"
 
-        """
+
+# rule ganon_binning2:
+#     input:
+#         fq1 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq1"])
+#     output:
+#         one=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one"),
+#         rep="ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
+#         tre=temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tre")
+#     benchmark:
+#         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])
+#     log:
+#         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.log"
+#     threads:
+#         config["threads"]
+#     conda:
+#         srcdir("../envs/ganon-{vers}.yaml")
+#     params:
+#         path = lambda wildcards: config["tools"]["ganon"][wildcards.vers],
+#         outprefix = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}", 
+#         dbprefix = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db",
+#         input_fq2 = lambda wildcards: os.path.abspath(config["samples"][wildcards.samp]["fq2"]) if "fq2" in config["samples"][wildcards.samp] else "",
+#         fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
+#         args = lambda wildcards: str2args(wildcards.b_args)
+#     shell:
+#         """
+#         if [[ -z "{params.input_fq2}" ]]; then # single-end
+#             {params.path}ganon classify \
+#                                --db-prefix {params.dbprefix} \
+#                                --single-reads {input.fq1} \
+#                                --output-prefix {params.outprefix} \
+#                                --threads {threads} \
+#                                --output-one \
+#                                --verbose \
+#                                {params.fixed_args} \
+#                                {params.args} > {log} 2>&1
+#         else # paired-end
+#             {params.path}ganon classify \
+#                                --db-prefix {params.dbprefix} \
+#                                --paired-reads {input.fq1} {params.input_fq2} \
+#                                --output-prefix {params.outprefix} \
+#                                --threads {threads} \
+#                                --output-one \
+#                                --verbose \
+#                                {params.fixed_args} \
+#                                {params.args} > {log} 2>&1
+#         fi
+
+#         """
 
 rule ganon_binning_format:
     input: 

@@ -1,4 +1,5 @@
 workdir: config["workdir"]
+snake_dir = workflow.basedir
 include: "util.py"
 include: "../tools/bracken.smk"
 include: "../tools/ganon.smk"
