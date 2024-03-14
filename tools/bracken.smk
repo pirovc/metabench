@@ -1,3 +1,5 @@
+def srcdir(x): return x
+
 rule bracken_build:
     output:
         db_kraken = temp("bracken/{vers}/{dtbs}/{dtbs_args}/database.kraken"),
@@ -30,8 +32,7 @@ rule bracken_build_size:
     output:
         "bracken/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
-
+        "{build_size_cmd} {input} > {output}"
 
 rule bracken_profiling:
     input:

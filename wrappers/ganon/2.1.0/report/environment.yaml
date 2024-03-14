@@ -1,0 +1,4 @@
+channels:
+  - bioconda
+dependencies:
+  - ganon ==2.1.0

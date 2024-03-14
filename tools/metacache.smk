@@ -41,7 +41,7 @@ rule metacache_build_size:
     output:
         "metacache/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
+        "{build_size_cmd} {input} > {output}"
 
 
 rule metacache_binning:

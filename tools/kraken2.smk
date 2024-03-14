@@ -51,7 +51,7 @@ rule kraken2_build_size:
     output:
         "kraken2/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
+        "{build_size_cmd} {input} > {output}"
 
 rule kraken2_binning:
     input:

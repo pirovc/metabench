@@ -5,6 +5,7 @@ import json
 
 version = "1.0.0"
 default_value = "default"
+build_size_cmd = "du --bytes --dereference --max-depth 0"
 
 def join_args(args):
     # Skip '' empty args created when using boolean parameters
@@ -165,3 +166,5 @@ def header_bioboxes_profiling(tool, ranks, taxonomy_files, wildcards):
     header += "@Taxonomy: " + ",".join(taxonomy_files) + "\n"
     header += "@@TAXID\tRANK\tTAXPATH\tTAXPATHSN\tPERCENTAGE"
     return header
+
+

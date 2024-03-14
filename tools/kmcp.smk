@@ -49,7 +49,7 @@ rule kmcp_build_size:
     output:
         "kmcp/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
+        "{build_size_cmd} {input} > {output}"
 
 
 rule kmcp_binning:
