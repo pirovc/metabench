@@ -28,17 +28,17 @@ rule ganon_build_size:
         "{build_size_cmd} {input} > {output}"
 
 
-rule ganon_classify:
+rule ganon_classify_binning:
     input:
         paired_reads = lambda wildcards: [os.path.abspath(config["samples"][wildcards.samp]["fq1"]),
                                           os.path.abspath(config["samples"][wildcards.samp]["fq2"])],
         db = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.hibf"
     output:
-        rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
-        one = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one"),
-        tre = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tre")
+        rep = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.classify.binning.rep"),
+        one = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.classify.binning.one"),
+        tre = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.classify.binning.tre")
     log:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.log"
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.classify.binning.log"
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])
     threads:
@@ -48,9 +48,10 @@ rule ganon_classify:
     wrapper:
         "file:///home/pirovc/code/metabench/wrappers/ganon/2.1.0/classify"
 
+
 rule ganon_binning_format:
     input: 
-        one = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one",
+        one = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.classify.binning.one",
         dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
     output:
         bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
@@ -90,16 +91,37 @@ rule ganon_binning_format:
             }}' >> {output.bioboxes}
         """
 
-rule ganon_report:
+rule ganon_classify_profiling:
     input:
-        rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
+        paired_reads = lambda wildcards: [os.path.abspath(config["samples"][wildcards.samp]["fq1"]),
+                                          os.path.abspath(config["samples"][wildcards.samp]["fq2"])],
+        db = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.hibf"
+    output:
+        rep = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.classify.profiling.rep"),
+        one = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.classify.profiling.one"),
+        tre = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.classify.profiling.tre")
+    log:
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.classify.profiling.log"
+    benchmark:
+        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.profiling.bench.tsv", config["repeat"])
+    threads:
+        config["threads"]
+    params:
+        extra = lambda wildcards: str2args(wildcards.p_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
+    wrapper:
+        "file:///home/pirovc/code/metabench/wrappers/ganon/2.1.0/classify"
+
+
+rule ganon_profiling_format:
+    input:
+        rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.classify.profiling.rep",
         db_tax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
     output:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.profiling.bioboxes"
     log:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.log"
-    benchmark:
-        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
+        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.report.profiling.log"
+    #benchmark:
+    #    repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.report.profiling.bench.tsv", config["repeat"])
     params:
         ranks = lambda wildcards: " ".join(config["default_ranks"]),
         extra = lambda wildcards: str2args(wildcards.p_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
