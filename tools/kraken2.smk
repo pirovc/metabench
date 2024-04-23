@@ -1,3 +1,5 @@
+def srcdir(x): return x
+
 rule kraken2_build:
     output:
         db1="kraken2/{vers}/{dtbs}/{dtbs_args}/hash.k2d",

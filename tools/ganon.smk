@@ -103,7 +103,7 @@ rule ganon_classify_profiling:
     log:
         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.classify.profiling.log"
     benchmark:
-        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.profiling.bench.tsv", config["repeat"])
+        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.classify.profiling.bench.tsv", config["repeat"])
     threads:
         config["threads"]
     params:
@@ -120,8 +120,8 @@ rule ganon_profiling_format:
         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.profiling.bioboxes"
     log:
         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.report.profiling.log"
-    #benchmark:
-    #    repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.report.profiling.bench.tsv", config["repeat"])
+    benchmark:
+        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.report.profiling.bench.tsv", config["repeat"])
     params:
         ranks = lambda wildcards: " ".join(config["default_ranks"]),
         extra = lambda wildcards: str2args(wildcards.p_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])

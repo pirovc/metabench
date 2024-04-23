@@ -36,8 +36,8 @@ def input_all():
                                 for profiling_args in args_product(config["run"][tool][vers]["args"]):
                                     pa = join_args(sorted(profiling_args))
                                     out.append(path + pa + ".profiling")
-    import pprint
-    pprint.pprint(out)
+    #import pprint
+    #pprint.pprint(out)
     return out
 
 rule all:
@@ -52,9 +52,10 @@ rule compress_profiling:
     shell:
         """gzip {input.profiling_bioboxes}"""
 
+
 rule bench_profiling:
     input:
-        bench_profiling = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.profiling.bench.tsv"
+        bench_profiling = get_benchmarks_profiling
     output:
         json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{p_args}.profiling.bench.json"
     params:

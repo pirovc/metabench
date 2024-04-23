@@ -2,6 +2,7 @@ from itertools import product
 import numpy as np
 import datetime
 import json
+from glob import glob
 
 version = "1.0.0"
 default_value = "default"
@@ -94,10 +95,9 @@ def json_default(report: str = "", config: dict = {}):
     return j
 
 
-def json_benchmark(bench_file, report: str = "", config: dict = {}, sum_bench: dict = {}):
+def json_benchmark(bench_files: list, report: str = "", config: dict = {}):
     out_json = json_default(report=report, config=config)
     out_json["config"] = config
-
     bench_fields = {0: "cpu_time_seconds",
                     # 1: "wall_clock_time",
                     2: "mem_rss_mb",
@@ -109,30 +109,31 @@ def json_benchmark(bench_file, report: str = "", config: dict = {}, sum_bench: d
                     8: "mean_cpu_load",
                     9: "cpu_load"}
 
-    # Parse benchmark file and select fastest if more then one run
-    with open(bench_file, "r") as file:
-        next(file)  # skip first line with header
-        bench_values = []
-        for line in file:
-            fields = line.rstrip().split("\t")
-            bench_values.append(fields)
+    # Initialize json and set repeats
+    for metric in bench_fields.values():
+        out_json["bench"][metric] = 0
+    
+    for bench_file in bench_files:
+        # Parse benchmark file and select fastest if more then one run
+        with open(bench_file, "r") as file:
+            next(file)  # skip first line with header
+            bench_values = []
+            for line in file:
+                fields = line.rstrip().split("\t")
+                bench_values.append(fields)
 
-    # Select lowest execution time cpu_time_seconds
-    selected_fields = bench_select_lowest(bench_values, 0)
+        # Select lowest execution time cpu_time_seconds if there are repeats
+        selected_fields = bench_select_lowest(bench_values, 0)
 
-    # Add repeats
-    out_json["bench"]["repeats"] = len(bench_values)
-    for field, metric in bench_fields.items():
-        out_json["bench"][metric] = float(selected_fields[field])
-
-    # If there's another benchmark to sum/max
-    if sum_bench:
+        # save and sum/max if there are several benchs
         for field, metric in bench_fields.items():
             if field == 0:  # sum cpu_time_seconds
-                out_json["bench"][metric] += float(sum_bench["bench"][metric])
+                out_json["bench"][metric] += float(selected_fields[field])
             else:  # max (any other field)
-                out_json["bench"][metric] = max(
-                    [out_json["bench"][metric], sum_bench["bench"][metric]])
+                out_json["bench"][metric] = max([out_json["bench"][metric], float(selected_fields[field])])
+
+        # Set repeats
+        out_json["bench"]["repeats"] = len(bench_values)
 
     return out_json
 
@@ -168,3 +169,9 @@ def header_bioboxes_profiling(tool, ranks, taxonomy_files, wildcards):
     return header
 
 
+def get_benchmarks_binning(wildcards):
+    return glob('{wildcards.tool}/{wildcards.vers}/{wildcards.samp}/{wildcards.dtbs}/{wildcards.dtbs_args}/{wildcards.b_args}.*{suffix}'.format(wildcards=wildcards, suffix="binning.bench.tsv"))
+
+
+def get_benchmarks_profiling(wildcards):
+    return glob('{wildcards.tool}/{wildcards.vers}/{wildcards.samp}/{wildcards.dtbs}/{wildcards.dtbs_args}/{wildcards.p_args}.*{suffix}'.format(wildcards=wildcards, suffix="profiling.bench.tsv"))

@@ -5,7 +5,7 @@ include: "util.py"
 #include: "../tools/bracken.smk"
 include: "../tools/ganon.smk"
 #include: "../tools/kmcp.smk"
-#include: "../tools/kraken2.smk"
+include: "../tools/kraken2.smk"
 #include: "../tools/metacache.smk"
 
 print("MetaBench v" + version)
@@ -54,7 +54,7 @@ rule compress_binning:
 
 rule bench_binning:
     input:
-        bench_binning = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv"
+        bench_binning = get_benchmarks_binning
     output:
         json = "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.json"
     params:
