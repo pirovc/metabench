@@ -1,3 +1,5 @@
+snake_dir = workflow.basedir
+
 rule ganon_build:
     input:
         lambda wildcards: config["dbs"][wildcards.dtbs]["folder"]
@@ -16,7 +18,7 @@ rule ganon_build:
         ncbi_file_info = lambda wildcards: config["dbs"][wildcards.dtbs]["assembly_summary"],
         extra = lambda wildcards: str2args(wildcards.dtbs_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers][wildcards.dtbs]["fixed_args"])
     wrapper:
-        "file:///home/pirovc/code/metabench/wrappers/ganon/2.1.0/build"
+        f"file:{snake_dir}/../wrappers/ganon/2.1.0/build"
 
 
 rule ganon_build_size:
@@ -46,7 +48,7 @@ rule ganon_classify:
     params:
         extra = lambda wildcards: str2args(wildcards.b_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
     wrapper:
-        "file:///home/pirovc/code/metabench/wrappers/ganon/2.1.0/classify"
+        f"file:{snake_dir}/../wrappers/ganon/2.1.0/classify"
 
 rule ganon_binning_format:
     input: 
@@ -104,4 +106,4 @@ rule ganon_report:
         ranks = lambda wildcards: " ".join(config["default_ranks"]),
         extra = lambda wildcards: str2args(wildcards.p_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
     wrapper:
-        "file:///home/pirovc/code/metabench/wrappers/ganon/2.1.0/report"
+        f"file:{snake_dir}/../wrappers/ganon/2.1.0/report"
