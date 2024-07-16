@@ -1,4 +1,3 @@
-def srcdir(x): return x
 
 rule bracken_build:
     output:
@@ -12,7 +11,7 @@ rule bracken_build:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/bracken-{vers}.yaml")
+        ("../envs/bracken.yaml")
     params:
         path = lambda wildcards: config["tools"]["bracken"][wildcards.vers],
         outprefix = "bracken/{vers}/{dtbs}/", #no args, to link from kraken2
@@ -45,7 +44,7 @@ rule bracken_profiling:
     benchmark:
         repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
     conda:
-        srcdir("../envs/bracken-{vers}.yaml")
+        ("../envs/bracken.yaml")
     params:
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/",
     shell:
@@ -61,9 +60,9 @@ rule bracken_profiling_format:
     log:
         "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes.log"
     conda:
-        srcdir("../envs/evals-{vers}.yaml")
+        ("../envs/evals.yaml")
     params:
-        scripts_path = srcdir("../scripts/"),
+        scripts_path = os.path.join(workflow.basedir, "../scripts"),
         ranks = lambda wildcards: " ".join(config["default_ranks"]),
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
@@ -76,7 +75,7 @@ rule bracken_profiling_format:
         """
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
-        python3 {params.scripts_path}profile.py \
+        python3 {params.scripts_path}/profile.py \
                                     --taxid-col 4 \
                                     --perc-col 0 \
                                     --input-file {input.bra} \
