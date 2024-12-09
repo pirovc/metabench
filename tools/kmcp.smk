@@ -11,7 +11,7 @@ rule kmcp_build:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/kmcp-{vers}.yaml")
+        ("../envs/kmcp.yaml")
     params:
         path = lambda wildcards: config["tools"]["kmcp"][wildcards.vers],
         db = lambda wildcards: config["dbs"][wildcards.dtbs],
@@ -49,7 +49,7 @@ rule kmcp_build_size:
     output:
         "kmcp/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
+        "{build_size_cmd} {input} > {output}"
 
 
 rule kmcp_binning:
@@ -67,7 +67,7 @@ rule kmcp_binning:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/kmcp-{vers}.yaml")
+        ("../envs/kmcp.yaml")
     params:
         path = lambda wildcards: config["tools"]["kmcp"][wildcards.vers],
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db",
@@ -123,7 +123,7 @@ rule kmcp_profiling:
         # 10:10:55.163 [INFO]   https://github.com/shenwei356/kmcp
         config["threads"] if config["threads"] <= 4 else 4
     conda:
-        srcdir("../envs/kmcp-{vers}.yaml")
+        ("../envs/kmcp.yaml")
     params:
         path = lambda wildcards: config["tools"]["kmcp"][wildcards.vers],
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kmcp"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/kmcp_db/taxonomy"],

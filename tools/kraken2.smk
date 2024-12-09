@@ -13,7 +13,7 @@ rule kraken2_build:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/kraken2-{vers}.yaml")
+        ("../envs/kraken2.yaml")
     priority: 1  # to run before bracken
     params:
         path = lambda wildcards: config["tools"]["kraken2"][wildcards.vers],
@@ -51,7 +51,7 @@ rule kraken2_build_size:
     output:
         "kraken2/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
+        "{build_size_cmd} {input} > {output}"
 
 rule kraken2_binning:
     input:
@@ -66,7 +66,7 @@ rule kraken2_binning:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/kraken2-{vers}.yaml")
+        ("../envs/kraken2.yaml")
     params:
         path = lambda wildcards: config["tools"]["kraken2"][wildcards.vers],
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/",

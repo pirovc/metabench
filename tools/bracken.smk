@@ -1,3 +1,4 @@
+
 rule bracken_build:
     output:
         db_kraken = temp("bracken/{vers}/{dtbs}/{dtbs_args}/database.kraken"),
@@ -10,7 +11,7 @@ rule bracken_build:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/bracken-{vers}.yaml")
+        ("../envs/bracken.yaml")
     params:
         path = lambda wildcards: config["tools"]["bracken"][wildcards.vers],
         outprefix = "bracken/{vers}/{dtbs}/", #no args, to link from kraken2
@@ -30,8 +31,7 @@ rule bracken_build_size:
     output:
         "bracken/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
-
+        "{build_size_cmd} {input} > {output}"
 
 rule bracken_profiling:
     input:
@@ -44,7 +44,7 @@ rule bracken_profiling:
     benchmark:
         repeat("kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
     conda:
-        srcdir("../envs/bracken-{vers}.yaml")
+        ("../envs/bracken.yaml")
     params:
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/",
     shell:
@@ -60,9 +60,9 @@ rule bracken_profiling_format:
     log:
         "kraken2/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes.log"
     conda:
-        srcdir("../envs/evals-{vers}.yaml")
+        ("../envs/evals.yaml")
     params:
-        scripts_path = srcdir("../scripts/"),
+        scripts_path = os.path.join(workflow.basedir, "../scripts"),
         ranks = lambda wildcards: " ".join(config["default_ranks"]),
         taxonomy_files = lambda wildcards: [os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/nodes.dmp",
                                             os.path.abspath(config["run"]["kraken2"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/taxonomy/names.dmp"],
@@ -75,7 +75,7 @@ rule bracken_profiling_format:
         """
         # bioboxes header
         echo "{params.header}" > {output.bioboxes}
-        python3 {params.scripts_path}profile.py \
+        python3 {params.scripts_path}/profile.py \
                                     --taxid-col 4 \
                                     --perc-col 0 \
                                     --input-file {input.bra} \

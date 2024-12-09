@@ -10,7 +10,7 @@ rule metacache_build:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/metacache-{vers}.yaml")
+        ("../envs/metacache.yaml")
     params:
         path = lambda wildcards: config["tools"]["metacache"][wildcards.vers],
         outprefix = "metacache/{vers}/{dtbs}/{dtbs_args}/metacache_db",
@@ -41,7 +41,7 @@ rule metacache_build_size:
     output:
         "metacache/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
     shell:
-        "du --bytes --dereference --max-depth 0 {input} > {output}"  # output in bytes
+        "{build_size_cmd} {input} > {output}"
 
 
 rule metacache_binning:
@@ -56,7 +56,7 @@ rule metacache_binning:
     threads:
         config["threads"]
     conda:
-        srcdir("../envs/metacache-{vers}.yaml")
+        ("../envs/metacache.yaml")
     params:
         path = lambda wildcards: config["tools"]["metacache"][wildcards.vers],
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["metacache"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/metacache_db",
@@ -87,7 +87,7 @@ rule metacache_binning_format:
         bioboxes = "metacache/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes",
         taxid_map = temp("metacache/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.map")
     conda:
-        srcdir("../envs/metacache-{vers}.yaml")
+        ("../envs/metacache.yaml")
     params:
         path = lambda wildcards: config["tools"]["metacache"][wildcards.vers],
         dbprefix = lambda wildcards: os.path.abspath(config["run"]["metacache"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/metacache_db",

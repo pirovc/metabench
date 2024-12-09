@@ -33,16 +33,16 @@ rule evals_binning_script:
     log:
         "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.evals.log"
     params:
-        scripts_path = srcdir("../scripts/"),
+        scripts_path = os.path.join(workflow.basedir, "../scripts"),
         ranks = " ".join(config["ranks"]),
         taxonomy_files = config["taxonomy_files"],
         db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
         gt = lambda wildcards: config["samples"][wildcards.samp]["binning"],
         threhsold_binning = " ".join(map(str,config["threhsold_binning"])) if "threhsold_binning" in config else "0"
-    conda: srcdir("../envs/evals.yaml")
+    conda: ("../envs/evals.yaml")
     shell: 
         """
-        python3 {params.scripts_path}evals_binning.py \
+        python3 {params.scripts_path}/evals_binning.py \
                 --ranks {params.ranks} \
                 --input-results {input.bioboxes} \
                 --input-ground-truth {params.gt} \
@@ -84,16 +84,16 @@ rule evals_profiling_script:
     log:
         "{tool}/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.evals.log"
     params:
-        scripts_path = srcdir("../scripts/"),
+        scripts_path = os.path.join(workflow.basedir, "../scripts"),
         ranks = " ".join(config["ranks"]),
         taxonomy_files = config["taxonomy_files"],
         db_profile = lambda wildcards: "--input-database-profile " + config["dbs"][wildcards.dtbs] if "dbs" in config and wildcards.dtbs in config["dbs"] else "",
         gt = lambda wildcards: config["samples"][wildcards.samp]["profiling"],
         threhsold_profiling = " ".join(map(str,config["threhsold_profiling"]))  if "threhsold_profiling" in config else "0"
-    conda: srcdir("../envs/evals.yaml")
+    conda: ("../envs/evals.yaml")
     shell: 
         """
-        python3 {params.scripts_path}evals_profiling.py \
+        python3 {params.scripts_path}/evals_profiling.py \
                 --ranks {params.ranks} \
                 --input-results {input.bioboxes} \
                 --input-ground-truth {params.gt} \

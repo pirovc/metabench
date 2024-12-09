@@ -1,0 +1,26 @@
+
+snake_dir = workflow.basedir
+
+
+def get_wrapper(v):
+    print(v)
+
+rule all:
+    input:
+      "2.1.0-out.rep"
+
+rule test_ganon_wrapper:
+    input:
+        paired_reads = ["/home/pirov/data/reads/cami2/marine/short/0.1M_0.1.fq.gz",
+                        "/home/pirov/data/reads/cami2/marine/short/0.1M_0.2.fq.gz"],
+        db = "/home/pirov/data/mgnify_genomes/mgnify_human_oral_v101.hibf"
+    output:
+        rep = "{ver}-out.rep",
+        tre = "{ver}-out.tre"
+    log:
+        "{ver}-out.log"
+    params:
+        extra="--verbose",
+        wrapper="2.1.0"
+    wrapper:
+       "file:wrappers/ganon/{params.wrapper}/classify/"

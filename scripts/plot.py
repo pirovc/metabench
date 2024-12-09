@@ -15,7 +15,7 @@ import pandas as pd
 from bokeh.io import save
 from bokeh.core.enums import MarkerType
 from bokeh.plotting import figure, output_file
-from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter, Div, FactorRange, MultiSelect, CustomJSHover, Legend, LegendItem, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, CheckboxButtonGroup, Spacer, Range1d, TextInput, Whisker
+from bokeh.models import ColumnDataSource, CDSView, Select, CustomJS, CustomJSTransform,CustomJSFilter, Div, FactorRange, MultiChoice, MultiSelect, CustomJSHover, Legend, LegendItem, HoverTool, Tabs, Panel, MultiChoice, Button, RadioButtonGroup, CheckboxGroup, CheckboxButtonGroup, Spacer, Range1d, TextInput, Whisker, Slope
 from bokeh.models.widgets import DataTable, TableColumn
 from bokeh.models.filters import GroupFilter, IndexFilter
 from bokeh.palettes import Category10, Category20, Colorblind, linear_palette, Turbo256
@@ -30,7 +30,7 @@ def main():
         prog="plot metabench with bokeh", conflict_handler="resolve", add_help=True)
     parser.add_argument("-i", "--input",     metavar="",
                         type=str, nargs="*", required=True, help="json file(s) and/or folder(s) with json reports (recursive search)")
-    parser.add_argument("-k", "--keep-metrics",    metavar="", default=["cpu_time_seconds", "mem_rss_mb", "filter_size", "io_out_bytes", "repeats", "classified", "classified_perc", "tp", "fp", "sensitivity", "sensitivity_max_db", "precision", "f1_score", "l1_norm", "l2_norm"],
+    parser.add_argument("-k", "--keep-metrics",    metavar="", default=["cpu_time_seconds", "mem_rss_mb", "total_size_bytes", "io_in_mb", "io_out_mb", "repeats", "classified", "classified_perc", "tp", "fp", "sensitivity", "sensitivity_max_db", "precision", "f1_score", "F1-Score", "l1_norm", "L1-norm", "l2_norm"],
                         type=str, nargs="*", help="list of metrics to show. empty to show all.")
     parser.add_argument("-o", "--output",    metavar="",
                         type=str, help="output html file")
@@ -126,7 +126,7 @@ def main():
     
     main_layout = Tabs(tabs=main_tabs)
 
-    output_file(args.output, title="Metabench", mode="inline")
+    output_file(args.output, title="MetaBench", mode="inline")
     save(main_layout)
 
     return True
@@ -139,17 +139,17 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
     #
 
     df_config = parse_df_config(tables[report]["config"], rnd_names)
-    print(df_config)
+    #print(df_config)
     cds_config = ColumnDataSource(df_config)
 
     df_bench = parse_df_data(tables[report]["bench"])
-    print(df_bench)
+    #print(df_bench)
     cds_bench = ColumnDataSource(df_bench)
 
     df_evals = parse_df_data(tables[report]["evals"])
     print(df_evals)
     cds_evals = ColumnDataSource(df_evals)
-
+ 
     # Check if all jsons are complete (with config, bench and evals)
     if max(df_config.index) != max(df_bench.config) or \
        (not df_evals.empty and max(df_config.index) != max(df_evals.config)):
@@ -188,8 +188,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
     radio_ranges = RadioButtonGroup(labels=["min-max", "0-1", "0-100"], active=0)
 
     # Group
-    multiselect_groups = MultiSelect(title="Group by",
-        value=["name"], options=df_config.columns.to_list(), size=9)
+    multichoice_groups = MultiChoice(title="Group by", value=["name"], options=df_config.columns.to_list())
 
     # Marker
     multiselect_markers = MultiSelect(title="Marker",
@@ -265,7 +264,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
     plot_ranks.scatter(x="rank", y="value",
                        source=cds_evals,
                        view=view_ranks,
-                       size=12,
+                       size=args.font_size,
                        marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
                        fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                        line_color="black")
@@ -274,7 +273,11 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
     plot_ranks.xaxis.major_label_orientation = "vertical"
 
     # Compare
-    plot_compare = figure(title="Compare", toolbar_location="above", tools=tools, width=500, height=500)
+    plot_compare = figure(toolbar_location="above", tools=tools, width=500, height=500)
+    
+    # Add diagonal line for reference
+    slope = Slope(gradient=1, y_intercept=0, line_width=2)
+    plot_compare.add_layout(slope)
 
     # Select metric for y-axis based on the stacked cds (assumes data is sorted)
     get_metric_x = CustomJSTransform(args=dict(cds_evals=cds_evals,
@@ -308,21 +311,27 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
                          y="value",
                          source=cds_evals,
                          view=view_compare,
-                         size=12,
+                         size=args.font_size,
                          marker=transform("config", CustomJSTransform_get_markercolor(smarkers, cds_config, multiselect_markers)),
                          fill_color=transform("config", CustomJSTransform_get_markercolor(scolor, cds_config, multiselect_colors)),
                          line_color="black")
     plot_compare.add_tools(make_hover(cds_config, exclude_list=["index", "fixed_arguments"]))
     plot_compare.xaxis.axis_label = init_metric
     plot_compare.yaxis.axis_label = init_metric
-
+    
+    # Font sizes
+    #plot.yaxis.formatter.use_scientific = False
+    plot_compare.xaxis.axis_label_text_font_size = str(args.font_size) + "pt"
+    plot_compare.yaxis.axis_label_text_font_size = str(args.font_size) + "pt"
+    plot_compare.yaxis.major_label_text_font_size = str(args.font_size) + "pt"
+    plot_compare.xaxis.major_label_text_font_size = str(args.font_size) + "pt"
 
     # Evals
-    plot_evals, legend_plot_evals, cds_boxplot_evals = main_plot(tools, cds_config, cds_evals, view_evals, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric, args.font_size)
+    plot_evals, legend_plot_evals, cds_boxplot_evals = main_plot(tools, cds_config, cds_evals, view_evals, smarkers, scolor, multichoice_groups, multiselect_markers, multiselect_colors, init_metric, args.font_size)
 
 
     # Bench
-    plot_bench, legend_plot_bench, cds_boxplot_bench = main_plot(tools, cds_config, cds_bench, view_bench, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric, args.font_size)
+    plot_bench, legend_plot_bench, cds_boxplot_bench = main_plot(tools, cds_config, cds_bench, view_bench, smarkers, scolor, multichoice_groups, multiselect_markers, multiselect_colors, init_metric, args.font_size)
 
     #
     # Callbacks
@@ -371,19 +380,21 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
         args=dict(cds_evals=cds_evals,
                   xaxis=plot_compare.xaxis[0]),
         code="""
+        // LABEL FIX
         xaxis.axis_label = this.value;
+        //xaxis.axis_label = this.value.split("|")[1];
         cds_evals.change.emit();
         """)
     select_metric_x_compare.js_on_change('value', cb_select_metric_x_compare)
 
     # Evals
-    cb_multiselect_groups_evals, cb_multiselect_markers_color_evals, cb_toggle_boxplot_evals, cb_toggle_label_evals, cb_toggle_legend_evals = main_callbacks(cds_config, cds_evals, plot_evals, view_evals, legend_plot_evals, cds_boxplot_evals, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average)
+    cb_multichoice_groups_evals, cb_multiselect_markers_color_evals, cb_toggle_boxplot_evals, cb_toggle_label_evals, cb_toggle_legend_evals = main_callbacks(cds_config, cds_evals, plot_evals, view_evals, legend_plot_evals, cds_boxplot_evals, multichoice_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average, args.font_size)
 
-    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_evals, cb_multiselect_groups_evals)
-    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_evals, cb_multiselect_groups_evals)
-    multiselect_groups.js_on_change('value', cb_multiselect_groups_evals, cb_toggle_boxplot_evals)
-    select_sort.js_on_change('value', cb_multiselect_groups_evals)
-    cds_config.selected.js_on_change('indices', cb_multiselect_groups_evals, cb_toggle_boxplot_evals)
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_evals, cb_multichoice_groups_evals)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_evals, cb_multichoice_groups_evals)
+    multichoice_groups.js_on_change('value', cb_multichoice_groups_evals, cb_toggle_boxplot_evals)
+    select_sort.js_on_change('value', cb_multichoice_groups_evals)
+    cds_config.selected.js_on_change('indices', cb_multichoice_groups_evals, cb_toggle_boxplot_evals)
     toggle_boxplot.js_on_click(cb_toggle_boxplot_evals)
     toggle_average.js_on_click(cb_toggle_boxplot_evals)
     toggle_label.js_on_click(cb_toggle_label_evals)
@@ -478,15 +489,16 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
         yaxis_ranks.axis_label = this.value;
 
         filter_metric_compare.group = this.value;
+        // LABEL FIX
         yaxis_compare.axis_label = this.value;
+        //yaxis_compare.axis_label = this.value.split("|")[1];
 
         filter_metric_evals.group = this.value;
+        // LABEL FIX
         yaxis_evals.axis_label = this.value + " (" + select_rank.value + ")";
+        //yaxis_evals.axis_label = this.value.split("|")[1];
 
         cds_evals.change.emit();
-
-        //console.log(Bokeh.documents[0].get_model_by_id('my_select'))
-        //radio_ranges.trigger_event(({"event_name": "click"}))
         """)
     select_metric.js_on_change('value', cb_select_metric, cb_toggle_boxplot_evals)
 
@@ -503,13 +515,13 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
 
 
     # Bench
-    cb_multiselect_groups_bench, cb_multiselect_markers_color_bench, cb_toggle_boxplot_bench, cb_toggle_label_bench, cb_toggle_legend_bench = main_callbacks(cds_config, cds_bench, plot_bench, view_bench, legend_plot_bench, cds_boxplot_bench, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average)
+    cb_multichoice_groups_bench, cb_multiselect_markers_color_bench, cb_toggle_boxplot_bench, cb_toggle_label_bench, cb_toggle_legend_bench = main_callbacks(cds_config, cds_bench, plot_bench, view_bench, legend_plot_bench, cds_boxplot_bench, multichoice_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average, args.font_size)
 
-    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_groups_bench)
-    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_bench, cb_multiselect_groups_bench)
-    multiselect_groups.js_on_change('value', cb_multiselect_groups_bench, cb_toggle_boxplot_bench)
-    select_sort.js_on_change('value', cb_multiselect_groups_bench)
-    cds_config.selected.js_on_change('indices', cb_multiselect_groups_bench, cb_toggle_boxplot_bench)
+    multiselect_markers.js_on_change('value', cb_multiselect_markers_color_bench, cb_multichoice_groups_bench)
+    multiselect_colors.js_on_change('value', cb_multiselect_markers_color_bench, cb_multichoice_groups_bench)
+    multichoice_groups.js_on_change('value', cb_multichoice_groups_bench, cb_toggle_boxplot_bench)
+    select_sort.js_on_change('value', cb_multichoice_groups_bench)
+    cds_config.selected.js_on_change('indices', cb_multichoice_groups_bench, cb_toggle_boxplot_bench)
     toggle_boxplot.js_on_click(cb_toggle_boxplot_bench)
     toggle_average.js_on_click(cb_toggle_boxplot_bench)
     toggle_label.js_on_click(cb_toggle_label_bench)
@@ -546,7 +558,7 @@ def plot_metabench(report, tables, default_ranks, tools, rnd_names, args):
 
     layout = column([row(table_config, column(*widgets_config)),
                      row([Tabs(tabs=tabs),
-                          column([multiselect_groups,
+                          column([multichoice_groups,
                                   row([multiselect_markers, multiselect_colors]),
                                   select_sort,
                                   toggle_boxplot,
@@ -758,22 +770,65 @@ def make_hover(cds_config, exclude_list: list = []):
     return hover_tool
 
 
-def CustomJSTransform_group_x(cds_config, multiselect_groups):
+def CustomJSTransform_group_x(cds_config, multichoice_groups, fig):
     # Change values on x-axis based on selected configuration groups
     group_x = CustomJSTransform(
         args=dict(cds_config=cds_config,
-                  multiselect_groups=multiselect_groups),
+                  multichoice_groups=multichoice_groups,
+                  fig=fig),
         v_func="""
-        if(multiselect_groups.value.length>0){
+        console.log(multichoice_groups.value);
+        if(multichoice_groups.value.length>0){
             const y = new Array(xs.length);
+            var gb1 = new Array(xs.length);
+            var gb2 = new Array(xs.length);
             for (let i = 0; i < xs.length; i++) {
-                var group = "|";
-                for(let v = 0; v < multiselect_groups.value.length; v++){
-                    group += cds_config.data[multiselect_groups.value[v]][xs[i]] + "|"
+                //var group = "|";
+                //for(let v = 0; v < multichoice_groups.value.length; v++){
+                //    group += cds_config.data[multichoice_groups.value[v]][xs[i]] + "|"
+                //}
+                //y[i] = group;
+
+                for(let v = 0; v < multichoice_groups.value.length; v++){
+                    if(v==0){
+                        gb1[i] = cds_config.data[multichoice_groups.value[v]][xs[i]];
+                    }else{
+                        gb2[i] = cds_config.data[multichoice_groups.value[v]][xs[i]];
+                    }
                 }
-                y[i] = group;
+
+          
             }
-            return y;
+
+
+            var factors = [];
+
+            if(multichoice_groups.value.length>1){
+                // Zip sample index and metadata field to create nested factors
+                factors = gb1.map(function(m, x) {
+                    return [m, gb2[x]];
+                });
+            }else{
+                factors=gb1;
+            }
+            console.log("factors:",factors);
+            
+
+            let set  = new Set(factors.map(JSON.stringify));
+            let unique = Array.from(set).map(JSON.parse);
+            var sortedArray = unique.sort(function(a, b) {
+            if (a[0] == b[0]) {
+                return a[1].localeCompare(b[1])
+            }
+            return a[0].localeCompare(b[0])
+            });
+
+
+            console.log("unique:", unique, sortedArray);
+
+            fig.x_range.factors = sortedArray;
+            return factors;
+            
         }else{
             return xs;
         }
@@ -806,7 +861,7 @@ def CustomJSTransform_get_markercolor(slist, cds_config, multiselect):
     return get_marker
 
 
-def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, multiselect_groups, multiselect_markers, multiselect_colors, init_metric, font_size):
+def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, multichoice_groups, multiselect_markers, multiselect_colors, init_metric, font_size):
 
     # BOXPLOT
     #        _________
@@ -825,7 +880,7 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
                   #width=800, height=500)
 
 
-    r = plot.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multiselect_groups)),
+    r = plot.scatter(x=transform("config", CustomJSTransform_group_x(cds_config, multichoice_groups, plot)),
                         y="value",
                         source=cds_target,
                         view=view_target,
@@ -855,6 +910,8 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
     plot.yaxis.axis_label_text_font_size = str(font_size) + "pt"
     plot.yaxis.major_label_text_font_size = str(font_size) + "pt"
     plot.xaxis.major_label_text_font_size = str(font_size) + "pt"
+    plot.xaxis.major_label_orientation = 1.1
+    plot.xaxis.group_text_font_size = str(font_size) + "pt"
     plot.legend.label_text_font_size = str(font_size) + "pt"
     plot.legend.glyph_height = font_size*2
     plot.legend.glyph_width = font_size*2
@@ -871,7 +928,7 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
     plot.add_layout(w)
 
     # Average
-    plot.scatter("index", "avg", source=cds_boxplot, color="red", size=20)
+    plot.scatter("index", "avg", source=cds_boxplot, color="red", size=font_size)
 
     # add hover just to the two box renderers
     box_hover = HoverTool(renderers=[top_box, bottom_box],
@@ -889,12 +946,12 @@ def main_plot(tools, cds_config, cds_target, view_target, smarkers, scolor, mult
 
     return plot, legend_plot, cds_boxplot
 
-def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot_target, cds_boxplot_target, multiselect_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average):
+def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot_target, cds_boxplot_target, multichoice_groups, multiselect_markers, multiselect_colors, select_sort, toggle_boxplot, toggle_average, font_size):
 
     cb_multiselect_target = CustomJS(
         args=dict(cds_config=cds_config,
                   plot_target=plot_target,
-                  multiselect_groups=multiselect_groups,
+                  multichoice_groups=multichoice_groups,
                   multiselect_markers=multiselect_markers,
                   multiselect_colors=multiselect_colors,
                   select_sort=select_sort,
@@ -907,8 +964,8 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
         var legend_idx = {};
         for(let i = 0; i < cds_config.selected.indices.length; i++){
             var group = "|";
-            for(let v = 0; v < multiselect_groups.value.length; v++){
-                group += cds_config.data[multiselect_groups.value[v]][cds_config.selected.indices[i]] + "|";
+            for(let v = 0; v < multichoice_groups.value.length; v++){
+                group += cds_config.data[multichoice_groups.value[v]][cds_config.selected.indices[i]] + "|";
             }
             factors_set.add(group);
 
@@ -946,7 +1003,7 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
 
         var factors = [...factors_set];
         var sorted_factors = new Array();
-        const index_sort = multiselect_groups.value.indexOf(select_sort.value);
+        const index_sort = multichoice_groups.value.indexOf(select_sort.value);
         // if sort by specific param (should be selected)
         if(index_sort > -1){
             var order = new Array();
@@ -973,7 +1030,7 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
         """)
 
     cb_toggle_boxplot = CustomJS(
-        args=dict(multiselect_groups=multiselect_groups,
+        args=dict(multichoice_groups=multichoice_groups,
                   view_target=view_target,
                   cds_target=cds_target,
                   cds_config=cds_config,
@@ -1002,8 +1059,8 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
                 const val = cds_target.data["value"][idx_target];
                 
                 var group = "|";
-                for(let v = 0; v < multiselect_groups.value.length; v++){
-                     group += cds_config.data[multiselect_groups.value[v]][cds_target.data["config"][idx_target]] + "|"
+                for(let v = 0; v < multichoice_groups.value.length; v++){
+                     group += cds_config.data[multichoice_groups.value[v]][cds_target.data["config"][idx_target]] + "|"
                 }
                 
                 if(!(group in groups_values)){
@@ -1028,7 +1085,7 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
 
             for(group in groups_values){
                 const sorted_arr = groups_values[group].sort((a, b) => a - b);
-                cds_boxplot_target.data["index"].push(group);
+                cds_boxplot_target.data["index"].push(group.slice(1, -1).split('|'));
 
                 const q1 = quantile(sorted_arr, .25);
                 const q3 = quantile(sorted_arr, .75);
@@ -1069,10 +1126,10 @@ def main_callbacks(cds_config, cds_target, plot_target, view_target, legend_plot
         ''')
 
     cb_toggle_label = CustomJS(
-        args=dict(xaxis=plot_target.xaxis[0]),
+        args=dict(xaxis=plot_target.xaxis[0], font_size=font_size),
         code='''
         if(this.active.includes(0)){
-            xaxis.major_label_text_font_size = "10px";
+            xaxis.major_label_text_font_size = font_size + "px";
             xaxis.major_tick_line_color="black";
         }else{
             xaxis.major_label_text_font_size = "0px";
