@@ -123,7 +123,7 @@ def json_benchmark(bench_file, report: str = "", config: dict = {}, sum_bench: d
     # Add repeats
     out_json["bench"]["repeats"] = len(bench_values)
     for field, metric in bench_fields.items():
-        out_json["bench"][metric] = float(selected_fields[field])
+        out_json["bench"][metric] = float(selected_fields[field]) if selected_fields[field]!="NA" else -1
 
     # If there's another benchmark to sum/max
     if sum_bench:

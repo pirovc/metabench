@@ -25,7 +25,7 @@ def main():
     parser.add_argument("-x", "--taxonomy-files", metavar="",
                         type=file_exists, nargs="*", help="")
     parser.add_argument("-r", "--ranks",          metavar="", type=str, nargs="*",
-                        help="empty for default ranks (superkingdom phylum class order family genus species)")
+                        help="empty for default ranks (domain phylum class order family genus species)")
     parser.add_argument("-s", "--thresholds", nargs="*", type=float, default=[0],
                         help="Thresholds to generate evaluations [0-100]")
     parser.add_argument("-j", "--output-json", type=str,
@@ -222,7 +222,7 @@ def profile_eval(res, gt, db, fixed_ranks, thresholds, output_json):
         print("gt", fr, len(gt[fr]), sep="\t", file=sys.stderr)
 
         # add limits to calculate proper aupr
-        aupr = np.trapz([1] + y[fr] + [0], x=[0] + x[fr] + [1])
+        aupr = np.trapezoid([1] + y[fr] + [0], x=[0] + x[fr] + [1])
         print("aupr", fr, aupr, sep="\t", file=sys.stderr)
         final_stats["summary"]["aupr"][fr] = aupr
 

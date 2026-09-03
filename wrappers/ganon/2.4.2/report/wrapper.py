@@ -1,7 +1,7 @@
 """Snakemake wrapper for ganon report"""
 
 __author__ = "Vitor C. Piro"
-__copyright__ = "Copyright 2024, Vitor C. Piro"
+__copyright__ = "Copyright 2026, Vitor C. Piro"
 __email__ = ""
 __license__ = "MIT"
 

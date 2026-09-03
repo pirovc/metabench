@@ -25,7 +25,7 @@ def main():
     parser.add_argument("-x", "--taxonomy-files", metavar="",
                         type=file_exists, nargs="*", help="")
     parser.add_argument("-r", "--ranks",          metavar="", type=str, nargs="*",
-                        help="empty for default ranks (superkingdom phylum class order family genus species)")
+                        help="empty for default ranks (domain phylum class order family genus species)")
     parser.add_argument("-s", "--thresholds", nargs="*", type=float, default=[0],
                         help="Thresholds to generate evaluations [0-100]")
     parser.add_argument("-c", "--output-cumulative", type=str,

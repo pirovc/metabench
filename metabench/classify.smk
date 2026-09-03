@@ -11,7 +11,7 @@ include: "../tools/metacache.smk"
 print("MetaBench v" + version)
 
 if "default_ranks" not in config:
-    config["default_ranks"] = ["superkingdom",
+    config["default_ranks"] = ["domain",
                                "phylum",
                                "class",
                                "order",
@@ -32,6 +32,7 @@ def input_all():
                             for dtbs_args in [d for d in os.listdir(db_dir) if os.path.isdir(os.path.join(db_dir, d))]:
                                 # define path to output
                                 path = tool + "/" + vers + "/" + samp + "/" + dtbs + "/" + dtbs_args + "/"
+                                
                                 # build product of all arguments (single or range)
                                 for binning_args in args_product(config["run"][tool][vers]["binning_args"]):
                                     ba = join_args(sorted(binning_args))

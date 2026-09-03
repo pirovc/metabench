@@ -46,7 +46,7 @@ def main():
     args = parser.parse_args()
 
     default_ranks = ["root",
-                     "superkingdom",
+                     "domain",
                      "phylum",
                      "class",
                      "order",

@@ -3,7 +3,7 @@ import argparse
 from multitax import CustomTx, DummyTx, NcbiTx, GtdbTx
 
 default_ranks = ["root",
-                 "superkingdom",
+                 "domain",
                  "phylum",
                  "class",
                  "order",

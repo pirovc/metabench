@@ -1,5 +1,7 @@
 snake_dir = workflow.basedir
 
+import shutil
+import os
 rule ganon_build:
     input:
         lambda wildcards: config["dbs"][wildcards.dtbs]["folder"]
@@ -18,7 +20,7 @@ rule ganon_build:
         ncbi_file_info = lambda wildcards: config["dbs"][wildcards.dtbs]["assembly_summary"],
         extra = lambda wildcards: str2args(wildcards.dtbs_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers][wildcards.dtbs]["fixed_args"])
     wrapper:
-        f"file:{snake_dir}/../wrappers/ganon/2.1.0/build"
+        f"file:{snake_dir}/../wrappers/ganon/2.4.2/build"
 
 
 rule ganon_build_size:
@@ -30,30 +32,71 @@ rule ganon_build_size:
         "{build_size_cmd} {input} > {output}"
 
 
-rule ganon_classify:
+# rule ganon_classify:
+#     input:
+#         paired_reads = lambda wildcards: [os.path.abspath(config["samples"][wildcards.samp]["fq1"]),
+#                                           os.path.abspath(config["samples"][wildcards.samp]["fq2"])],
+#         dbs = lambda wildcards: [os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.hibf')]
+#     output:
+#         rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
+#         one = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one"),
+#         tre = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tre")
+#     log:
+#         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.log"
+#     benchmark:
+#         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])
+#     threads:
+#         config["threads"]
+#     params:
+#         extra = lambda wildcards: str2args(wildcards.b_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
+#     wrapper:
+#         f"file:{snake_dir}/../wrappers/ganon/2.4.2/classify"
+
+def make_batch_reads_file(samples, wildcards):
+    batch_reads_file = f"{wildcards.vers}_{wildcards.dtbs}_{wildcards.dtbs_args}_{wildcards.b_args}.tsv"
+    with open(batch_reads_file, "w") as brf:
+        for sample, f in samples.items():
+            print(f"ganon/{wildcards.vers}/{sample}/{wildcards.dtbs}/{wildcards.dtbs_args}/{wildcards.b_args}", f["fq1"], f["fq2"], sep="\t", file=brf)
+    return batch_reads_file
+
+rule ganon_classify_batch:
     input:
-        paired_reads = lambda wildcards: [os.path.abspath(config["samples"][wildcards.samp]["fq1"]),
-                                          os.path.abspath(config["samples"][wildcards.samp]["fq2"])],
-        db = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.hibf"
+        batch_reads = temp(lambda wildcards: make_batch_reads_file(config["samples"], wildcards)),
+        dbs = lambda wildcards: [os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.hibf')]
     output:
-        rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
-        one = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one"),
-        tre = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tre")
+        rep = ["ganon/{vers}/" + samp + "/{dtbs}/{dtbs_args}/{b_args}.rep" for samp in config["samples"]],
+        one = temp(["ganon/{vers}/" + samp + "/{dtbs}/{dtbs_args}/{b_args}.one" for samp in config["samples"]]),
+        tre = temp(["ganon/{vers}/" + samp + "/{dtbs}/{dtbs_args}/{b_args}.tre" for samp in config["samples"]])
     log:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.log"
+        "ganon_{vers}_{dtbs}_{dtbs_args}_{b_args}.binning.log"
     benchmark:
-        repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])
+       repeat("ganon_{vers}_{dtbs}_{dtbs_args}_{b_args}.binning.bench.tsv", config["repeat"])
     threads:
         config["threads"]
     params:
         extra = lambda wildcards: str2args(wildcards.b_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
     wrapper:
-        f"file:{snake_dir}/../wrappers/ganon/2.1.0/classify"
+        f"file:{snake_dir}/../wrappers/ganon/2.4.2/classify"
 
+rule mv_log_bench_batch:
+    input:
+        batch_log = "ganon_{vers}_{dtbs}_{dtbs_args}_{b_args}.binning.log",
+        batch_bench = "ganon_{vers}_{dtbs}_{dtbs_args}_{b_args}.binning.bench.tsv"
+    output:
+        benchs = (["ganon/{vers}/" + samp + "/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv" for samp in config["samples"]]),
+        logs = (["ganon/{vers}/" + samp + "/{dtbs}/{dtbs_args}/{b_args}.binning.log" for samp in config["samples"]])
+    run:
+        for bench in output.benchs:
+            shutil.copyfile(input.batch_bench, bench)
+        for lg in output.logs:
+            shutil.copyfile(input.batch_log, lg)
+        os.remove(input.batch_bench)
+        os.remove(input.batch_log)
+        
 rule ganon_binning_format:
     input: 
         one = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one",
-        dbtax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
+        dbtax = lambda wildcards: [os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.tax')]
     output:
         bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bioboxes"
     params:
@@ -74,7 +117,7 @@ rule ganon_binning_format:
 
         join -1 2 -2 1 -t$'\t' -o "1.1,1.2,2.2,2.3" -a 1 \
         <(sort -t$'\t' -k 2,2 {input.one}) \
-        <(sort -t$'\t' -k 1,1 {input.dbtax}) | \
+        <(cut -f 1,2,3 {input.dbtax} | sort | uniq | sort -t$'\t' -k 1,1 {input.dbtax}) | \
         awk 'BEGIN{{FS=OFS="\t"}}
             {{
                 if(substr($1,length($1)-1)=="/1"){{
@@ -95,7 +138,8 @@ rule ganon_binning_format:
 rule ganon_report:
     input:
         rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
-        db_tax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
+        #db_tax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
+        db_tax = lambda wildcards: [os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.tax')]
     output:
         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
     log:
@@ -106,4 +150,4 @@ rule ganon_report:
         ranks = lambda wildcards: " ".join(config["default_ranks"]),
         extra = lambda wildcards: str2args(wildcards.p_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
     wrapper:
-        f"file:{snake_dir}/../wrappers/ganon/2.1.0/report"
+        f"file:{snake_dir}/../wrappers/ganon/2.4.2/report"
