@@ -18,7 +18,7 @@ def main():
                         help="bioboxes binning format v0.10.0: @@SEQUENCEID <tab> TAXID [<tab> __NCBI_ASSEMBLY_ACCESSION] [<tab> __NCBI_SEQUENCE_ACCESSION]")
     parser.add_argument("-g", "--input-ground-truth", metavar="", type=file_exists,
                         help="bioboxes binning format v0.10.0: @@SEQUENCEID <tab> TAXID [<tab> __NCBI_ASSEMBLY_ACCESSION] [<tab> __NCBI_SEQUENCE_ACCESSION]")
-    parser.add_argument("-d", "--input-database-profile", metavar="", type=file_exists,
+    parser.add_argument("-d", "--input-database-profile", metavar="", type=file_exists, nargs="*",
                         help="same as .tax file from ganon: taxid <tab> parent <tab> rank <tab> name")
     parser.add_argument("-t", "--taxonomy",       metavar="",
                         type=str, help="custom, ncbi or gtdb")
@@ -40,7 +40,7 @@ def main():
     fixed_ranks = ["root"] + args.ranks if args.ranks else default_ranks
 
     gt_file = args.input_ground_truth
-    db_file = args.input_database_profile
+    db_files = args.input_database_profile
     res_file = args.input_results
 
     output_cumu = open(args.output_cumulative,
@@ -58,7 +58,7 @@ def main():
     db = set()
     db_assembly = set()
     db_sequence = set()
-    if db_file:
+    for db_file in db_files:
         for line in gzip.open(db_file, "rt") if db_file.endswith(".gz") else open(db_file, "r"):
             if line[0] == "@":
                 continue

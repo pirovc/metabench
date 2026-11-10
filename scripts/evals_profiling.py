@@ -19,7 +19,7 @@ def main():
     parser.add_argument("-g", "--input-ground-truth", metavar="",
                         type=file_exists, help="bioboxes profile TAXID <tab> RANK <tab> TAXPATH <tab> TAXPATHSN <tab> PERCENTAGE")
     parser.add_argument("-d", "--input-database-profile", metavar="",
-                        type=file_exists, help="taxid <tab> parent <tab> rank <tab> name")
+                        type=file_exists, nargs="*", help="taxid <tab> parent <tab> rank <tab> name")
     parser.add_argument("-t", "--taxonomy",       metavar="",
                         type=str, help="custom, ncbi or gtdb")
     parser.add_argument("-x", "--taxonomy-files", metavar="",
@@ -38,7 +38,7 @@ def main():
     fixed_ranks = args.ranks if args.ranks else default_ranks[1:]
 
     gt_file = args.input_ground_truth
-    db_file = args.input_database_profile
+    db_files = args.input_database_profile
     res_file = args.input_results
 
     output_json = open(args.output_json, "w") if args.output_json else None
@@ -65,7 +65,7 @@ def main():
 
     # Database profile: taxid <tab> parent <tab> rank <tab> name
     db = dict()
-    if db_file:
+    for db_file in db_files:
         for line in gzip.open(db_file, "rt") if db_file.endswith(".gz") else open(db_file, "r"):
             if line[0] == "@":
                 continue

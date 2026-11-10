@@ -316,7 +316,7 @@ dbs:
 
 # Ranks to evaluate
 ranks:
-  - superkingdom
+  - domain
   - phylum
   - class
   - order

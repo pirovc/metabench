@@ -17,7 +17,7 @@ dbs:
   "database99": "/my/db/contents/db99.tax"
 
 ranks:
-  - superkingdom
+  - domain
   - phylum
   - class
   - order

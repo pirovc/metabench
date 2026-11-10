@@ -50,7 +50,7 @@ run:
 
 # Optional, define alternative ranks for profiling
 #default_ranks:
-#  - superkingdom
+#  - domain
 #  - phylum
 #  - class
 #  - order

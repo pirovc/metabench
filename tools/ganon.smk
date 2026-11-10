@@ -1,68 +1,87 @@
-snake_dir = workflow.basedir
-
 import shutil
 import os
-rule ganon_build:
-    input:
-        lambda wildcards: config["dbs"][wildcards.dtbs]["folder"]
-    output:
-        multiext("ganon/{vers}/{dtbs}/{dtbs_args}/ganon_db", ".tax", ".hibf")
-    log:
-        "ganon/{vers}/{dtbs}/{dtbs_args}.build.log"
-    benchmark:
-        repeat("ganon/{vers}/{dtbs}/{dtbs_args}.build.bench.tsv", config["repeat"])
-    threads:
-        config["threads"]
-    params:
-        extension = lambda wildcards: config["dbs"][wildcards.dtbs]["extension"],
-        taxonomy = lambda wildcards: config["dbs"][wildcards.dtbs]["taxonomy"],
-        taxonomy_files = lambda wildcards: config["dbs"][wildcards.dtbs]["taxonomy_files"],
-        ncbi_file_info = lambda wildcards: config["dbs"][wildcards.dtbs]["assembly_summary"],
-        extra = lambda wildcards: str2args(wildcards.dtbs_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers][wildcards.dtbs]["fixed_args"])
-    wrapper:
-        f"file:{snake_dir}/../wrappers/ganon/2.4.2/build"
 
-
-rule ganon_build_size:
-    input:
-        multiext("ganon/{vers}/{dtbs}/{dtbs_args}/ganon_db", ".tax", ".hibf")
-    output:
-        "ganon/{vers}/{dtbs}/{dtbs_args}.build.size.tsv"
+rule git:
+    output: "{commit}/ganon/README.md"
+    log: git_log = os.path.abspath("{commit}/git.log")
     shell:
-        "{build_size_cmd} {input} > {output}"
+        """
+        cd {wildcards.commit}
+        git clone https://github.com/pirovc/ganon.git > {log} 2>&1
+        cd ganon
+        git reset --hard {wildcards.commit} >> {log} 2>&1
+        git submodule update --init --recursive >> {log} 2>&1
 
+        conda create --yes -c bioconda -c conda-forge -n "env_ganon_{wildcards.commit}" raptor pip "gcc==14.4.0" cxx-compiler zlib bzip2 "cmake>=3.5" make >> {log} 2>&1
+        """
 
-# rule ganon_classify:
-#     input:
-#         paired_reads = lambda wildcards: [os.path.abspath(config["samples"][wildcards.samp]["fq1"]),
-#                                           os.path.abspath(config["samples"][wildcards.samp]["fq2"])],
-#         dbs = lambda wildcards: [os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.hibf')]
-#     output:
-#         rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
-#         one = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.one"),
-#         tre = temp("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.tre")
-#     log:
-#         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.log"
-#     benchmark:
-#         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.binning.bench.tsv", config["repeat"])
-#     threads:
-#         config["threads"]
-#     params:
-#         extra = lambda wildcards: str2args(wildcards.b_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
-#     wrapper:
-#         f"file:{snake_dir}/../wrappers/ganon/2.4.2/classify"
+rule comp:
+    input: "{commit}/ganon/README.md"
+    output: ganon_classify_exec = "{commit}/ganon/build/ganon-classify",
+            ganon_build_exec = "{commit}/ganon/build/ganon-build"
+    log: os.path.abspath("{commit}/comp.log")
+    conda:
+        ("../envs/ganon.yaml")
+    params: build_folder = "{commit}/ganon/build",
+            #compile_params = lambda wildcards: config["commits"][wildcards.commit]["compile_params"]
+    shell: 
+        """
+        conda activate "env_ganon_{wildcards.commit}"
+        mkdir -p {params.build_folder}
+        cd {params.build_folder}
+        cmake -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX .. > {log} 2>&1
+        make -j >> {log} 2>&1
+        make install >> {log} 2>&1
+        cd ..
+        pip install --pre .[dev]  >> {log} 2>&1
+        """
+
+rule test:
+    input: ganon_classify_exec = "{commit}/ganon/build/ganon-classify",
+            ganon_build_exec = "{commit}/ganon/build/ganon-build"
+    output: env = "env_ganon_{commit}"
+    log: os.path.abspath("{commit}/test.log")
+    conda:
+        ("../envs/ganon.yaml")
+    params: build_folder = "{commit}/ganon/build"
+    shell: 
+        """
+        base_dir="$(pwd)"
+        conda activate "env_ganon_{wildcards.commit}"
+        cd {params.build_folder}
+        ctest -VV . > {log} 2>&1
+        cd ..
+        #python3 -m unittest discover -s tests/ganon/integration/ >> {log} 2>&1
+
+        cd "${{base_dir}}"
+        ganon -v > {output.env} 2>&1
+        ganon-build -v >> {output.env} 2>&1
+        ganon-classify -v >> {output.env} 2>&1
+        conda list >> {output.env} 2>&1
+
+        # Remove code
+        #rm -r {wildcards.commit}
+        """
+
+def define_env(ganon_cfg):
+    return "env_ganon_" + ganon_cfg if ganon_cfg else []
 
 def make_batch_reads_file(samples, wildcards):
     batch_reads_file = f"{wildcards.vers}_{wildcards.dtbs}_{wildcards.dtbs_args}_{wildcards.b_args}.tsv"
     with open(batch_reads_file, "w") as brf:
         for sample, f in samples.items():
-            print(f"ganon/{wildcards.vers}/{sample}/{wildcards.dtbs}/{wildcards.dtbs_args}/{wildcards.b_args}", f["fq1"], f["fq2"], sep="\t", file=brf)
+            fq1s = f["fq1"].split(" ")
+            fq2s = f["fq2"].split(" ")
+            for i, fq1 in enumerate(fq1s):
+                fq2 = fq2s[i] if fq2s != [""] else ""
+                print(f"ganon/{wildcards.vers}/{sample}/{wildcards.dtbs}/{wildcards.dtbs_args}/{wildcards.b_args}", fq1, fq2, sep="\t", file=brf)
     return batch_reads_file
 
 rule ganon_classify_batch:
     input:
-        batch_reads = temp(lambda wildcards: make_batch_reads_file(config["samples"], wildcards)),
-        dbs = lambda wildcards: [os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.hibf')]
+        batch_reads = lambda wildcards: make_batch_reads_file(config["samples"], wildcards),
+        dbs = lambda wildcards: sorted([os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.hibf')]),
+        env = lambda wildcards: define_env(config["tools"]["ganon"][wildcards.vers])
     output:
         rep = ["ganon/{vers}/" + samp + "/{dtbs}/{dtbs_args}/{b_args}.rep" for samp in config["samples"]],
         one = temp(["ganon/{vers}/" + samp + "/{dtbs}/{dtbs_args}/{b_args}.one" for samp in config["samples"]]),
@@ -73,10 +92,30 @@ rule ganon_classify_batch:
        repeat("ganon_{vers}_{dtbs}_{dtbs_args}_{b_args}.binning.bench.tsv", config["repeat"])
     threads:
         config["threads"]
+    conda:
+        ("../envs/ganon.yaml")
     params:
-        extra = lambda wildcards: str2args(wildcards.b_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
-    wrapper:
-        f"file:{snake_dir}/../wrappers/ganon/2.4.2/classify"
+        dbprefixes = lambda wildcards, input: [db[:-5] for db in input.dbs],
+        fixed_args = lambda wildcards: dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"]),
+        args = lambda wildcards: str2args(wildcards.b_args)
+    shell:
+        """
+        if [[ -n {input.env} ]]; then
+            conda activate {input.env}
+        fi
+
+        ganon classify \
+                --db-prefix {params.dbprefixes} \
+                --batch-reads {input.batch_reads} \
+                --output-prefix ./ \
+                --threads {threads} \
+                --output-one \
+                --verbose \
+                {params.fixed_args} \
+                {params.args} > {log} 2>&1
+        
+        rm {input.batch_reads}
+        """
 
 rule mv_log_bench_batch:
     input:
@@ -135,19 +174,33 @@ rule ganon_binning_format:
             }}' >> {output.bioboxes}
         """
 
+
 rule ganon_report:
     input:
         rep = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}.rep",
-        #db_tax = lambda wildcards: os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/ganon_db.tax"
-        db_tax = lambda wildcards: [os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.tax')]
+        db_tax = lambda wildcards: [os.path.join(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/", f) for f in os.listdir(os.path.abspath(config["run"]["ganon"][wildcards.vers]["dbs"][wildcards.dtbs]) + "/" + wildcards.dtbs_args + "/") if f.endswith('.tax')],
+        env = lambda wildcards: define_env(config["tools"]["ganon"][wildcards.vers])
     output:
-        "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
+        bioboxes = "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bioboxes"
     log:
         "ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.log"
     benchmark:
         repeat("ganon/{vers}/{samp}/{dtbs}/{dtbs_args}/{b_args}/{p_args}.profiling.bench.tsv", config["repeat"])
+    conda:
+        ("../envs/ganon.yaml")
     params:
         ranks = lambda wildcards: " ".join(config["default_ranks"]),
-        extra = lambda wildcards: str2args(wildcards.p_args) + " " + dict2args(config["run"]["ganon"][wildcards.vers]["fixed_args"])
-    wrapper:
-        f"file:{snake_dir}/../wrappers/ganon/2.4.2/report"
+        args = lambda wildcards: str2args(wildcards.p_args)
+    shell:
+        """
+        if [[ -n {input.env} ]]; then
+            conda activate {input.env}
+        fi
+        ganon report \
+            --db-prefix {input.db_tax} \
+            --input {input.rep} \
+            --output-prefix {output.bioboxes} \
+            --ranks {params.ranks} \
+            --output-format bioboxes {params.args} > {log} 2>&1
+        mv {output.bioboxes}.tre {output.bioboxes}
+        """
